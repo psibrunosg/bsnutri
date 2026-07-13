@@ -1,5 +1,8 @@
 create type public.substitution_request_status as enum ('requested','approved','rejected','cancelled');
 
+alter table public.meal_items
+  add constraint meal_items_id_organization_unique unique (id, organization_id);
+
 create table public.meal_item_substitutions (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
