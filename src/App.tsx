@@ -3,12 +3,14 @@ import type { Session } from '@supabase/supabase-js'
 import { CalendarDays, LogOut, Menu, Plus, Search, Users, Utensils, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { NutritionWorkspace } from './NutritionWorkspace'
+import { PatientPortal } from './PatientPortal'
 import './App.css'
 
 type Workspace = { organization_id: string; role: string; organizations: { name: string } | null }
 type Patient = { id: string; anonymous_code: string; full_name: string; email: string | null; birth_date: string | null; status: string }
 type Assessment = { id: string; assessed_at: string; objective: string | null; food_preferences: string | null; food_restrictions: string | null; allergies: string | null }
 type Anthropometry = { id: string; measured_at: string; weight_kg: number | null; height_cm: number | null; body_fat_percent: number | null; waist_cm: number | null }
+type PatientAccess = { id: string; full_name: string; anonymous_code: string }
 
 function AuthScreen() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
@@ -96,9 +98,16 @@ function Dashboard({ session, workspace }: { session: Session; workspace: Worksp
 }
 
 export function App() {
-  const [session, setSession] = useState<Session | null>(null); const [ready, setReady] = useState(false); const [workspace, setWorkspace] = useState<Workspace | null>(null); const [loading, setLoading] = useState(true)
-  async function loadWorkspace(userId: string) { const { data } = await supabase.from('memberships').select('organization_id,role,organizations(name)').eq('user_id', userId).eq('status','active').limit(1).maybeSingle(); setWorkspace(data as unknown as Workspace | null); setReady(Boolean(data)); setLoading(false) }
-  useEffect(() => { supabase.auth.getSession().then(({ data }) => { setSession(data.session); if (data.session) void loadWorkspace(data.session.user.id); else setLoading(false) }); const { data } = supabase.auth.onAuthStateChange((_event, next) => { setSession(next); if (next) void loadWorkspace(next.user.id); else { setWorkspace(null); setLoading(false) } }); return () => data.subscription.unsubscribe() }, [])
-  if (loading) return <main className="loading">Carregando BSNutri...</main>; if (!session) return <AuthScreen/>; if (!ready || !workspace) return <Bootstrap session={session} onReady={() => loadWorkspace(session.user.id)}/>; return <Dashboard session={session} workspace={workspace}/>
+  const [session, setSession] = useState<Session | null>(null); const [ready, setReady] = useState(false); const [workspace, setWorkspace] = useState<Workspace | null>(null); const [patientAccess,setPatientAccess]=useState<PatientAccess|null>(null); const [loading, setLoading] = useState(true)
+  async function loadWorkspace(current: Session) {
+    setLoading(true);const { data } = await supabase.from('memberships').select('organization_id,role,organizations(name)').eq('user_id', current.user.id).eq('status','active').limit(1).maybeSingle()
+    if(data){setWorkspace(data as unknown as Workspace);setPatientAccess(null);setReady(true);setLoading(false);return}
+    await supabase.from('profiles').upsert({id:current.user.id,full_name:current.user.user_metadata.full_name??current.user.email??'Paciente'},{onConflict:'id'})
+    await supabase.rpc('claim_patient_access')
+    const linked=await supabase.from('patients').select('id,full_name,anonymous_code').eq('patient_user_id',current.user.id).limit(1).maybeSingle()
+    setWorkspace(null);setPatientAccess(linked.data as PatientAccess|null);setReady(Boolean(linked.data));setLoading(false)
+  }
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => { setSession(data.session); if (data.session) void loadWorkspace(data.session); else setLoading(false) }); const { data } = supabase.auth.onAuthStateChange((_event, next) => { setSession(next); if (next) void loadWorkspace(next); else { setWorkspace(null);setPatientAccess(null);setLoading(false) } }); return () => data.subscription.unsubscribe() }, [])
+  if (loading) return <main className="loading">Carregando BSNutri...</main>; if (!session) return <AuthScreen/>;if(patientAccess)return <PatientPortal patient={patientAccess}/>; if (!ready || !workspace) return <Bootstrap session={session} onReady={() => loadWorkspace(session)}/>; return <Dashboard session={session} workspace={workspace}/>
 }
 export default App
