@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import App from './App'
 
@@ -7,5 +7,12 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByText('Bem-vindo de volta')).toBeInTheDocument()
     expect(screen.getByText('BSNutri')).toBeInTheDocument()
+  })
+
+  it('oferece recuperação de senha por e-mail', async () => {
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Esqueci minha senha' }))
+    expect(screen.getByRole('heading', { name: 'Recupere sua senha' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Enviar link de recuperação' })).toBeInTheDocument()
   })
 })
