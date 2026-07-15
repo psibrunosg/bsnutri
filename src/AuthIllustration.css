@@ -22,6 +22,20 @@
   width: 46px;
 }
 
+.auth-card .primary {
+  width: 100%;
+}
+
+.auth-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.auth-actions .link {
+  margin-top: 0;
+}
+
 @media (max-width: 760px) {
   .auth-page {
     background-position: 66% center;

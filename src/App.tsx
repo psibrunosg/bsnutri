@@ -54,7 +54,7 @@ export function AuthScreen({ recovery = false, onRecoveryComplete }: { recovery?
       {mode !== 'forgot' && <label>Senha<input name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} required/></label>}
       {mode === 'recovery' && <label>Confirme a nova senha<input name="passwordConfirmation" type="password" autoComplete="new-password" minLength={8} required/></label>}
       {message && <p className="form-message" role="status">{message}</p>}<button className="primary" disabled={busy || !isSupabaseConfigured}>{busy ? 'Aguarde...' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Cadastrar' : mode === 'forgot' ? 'Enviar link de recuperação' : 'Atualizar senha'}</button>
-    </form>{mode === 'login' && <><button type="button" className="primary" onClick={() => setMode('signup')}>Criar minha conta</button><button type="button" className="link" onClick={() => setMode('forgot')}>Esqueci minha senha</button></>}{mode === 'signup' && <button type="button" className="link" onClick={() => setMode('login')}>Já tenho uma conta</button>}{mode === 'forgot' && <button type="button" className="link" onClick={() => setMode('login')}>Voltar para entrar</button>}
+    </form>{mode === 'login' && <div className="auth-actions"><button type="button" className="primary" onClick={() => setMode('signup')}>Criar minha conta</button><button type="button" className="link" onClick={() => setMode('forgot')}>Esqueci minha senha</button></div>}{mode === 'signup' && <button type="button" className="link" onClick={() => setMode('login')}>Já tenho uma conta</button>}{mode === 'forgot' && <button type="button" className="link" onClick={() => setMode('login')}>Voltar para entrar</button>}
   </section></main>
 }
 
