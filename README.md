@@ -71,12 +71,14 @@ Os testes SQL em `supabase/tests` verificam o isolamento entre clínicas e as pe
 
 O workflow `.github/workflows/deploy.yml` valida e publica a branch `main`. No GitHub, configure **Settings > Pages > Source** como **GitHub Actions**.
 
-As variáveis do Supabase precisam existir durante o build. Cadastre em **Settings > Secrets and variables > Actions > Variables**:
+As variáveis do Supabase precisam existir durante o build. Cadastre em **Settings > Secrets and variables > Actions > Secrets**, pois o workflow usa `secrets`:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
 Quando o workflow passar a consumi-las, mantenha somente valores públicos nessas variáveis. GitHub Pages hospeda arquivos estáticos: autenticação, autorização e isolamento de dados dependem do Supabase RLS, nunca de esconder controles na interface.
+
+No Supabase, mantenha `https://psibrunosg.github.io/bsnutri/` como **Site URL** e também em **Redirect URLs**. Isso permite que os links de confirmação e de recuperação de senha retornem ao aplicativo.
 
 ## Fluxo de contribuição
 

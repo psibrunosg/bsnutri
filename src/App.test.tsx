@@ -15,4 +15,11 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Recupere sua senha' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Enviar link de recuperação' })).toBeInTheDocument()
   })
+
+  it('deixa claro como criar a primeira conta', async () => {
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Criar minha conta' }))
+    expect(screen.getByRole('heading', { name: 'Crie sua conta' })).toBeInTheDocument()
+    expect(screen.getByText('Depois do cadastro, confirme o e-mail para liberar o acesso.')).toBeInTheDocument()
+  })
 })
