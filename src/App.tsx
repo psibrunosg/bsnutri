@@ -46,7 +46,7 @@ export function AuthScreen({ recovery = false, onRecoveryComplete }: { recovery?
     setBusy(false)
   }
   return <main className="auth-page"><section className="auth-card">
-    <div className="brand"><span>BS</span><div><strong>BSNutri</strong><small>Nutrição integrada</small></div></div>
+    <div className="brand"><span className="brand-wolf" role="img" aria-label="Rosto do lobo da BS Nutrição integrada"/><strong>BS Nutrição integrada</strong></div>
     <h1>{mode === 'login' ? 'Bem-vindo de volta' : mode === 'signup' ? 'Crie sua conta' : mode === 'forgot' ? 'Recupere sua senha' : 'Defina uma nova senha'}</h1><p>{mode === 'login' ? 'Entre com seu e-mail e senha. No primeiro acesso, crie sua conta.' : mode === 'signup' ? 'Depois do cadastro, confirme o e-mail para liberar o acesso.' : mode === 'forgot' ? 'Informe seu e-mail para receber um link seguro.' : 'Crie uma senha com pelo menos 8 caracteres.'}</p>
     {!isSupabaseConfigured && <div className="notice">Configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.</div>}
     <form onSubmit={submit}>{mode === 'signup' && <label>Nome completo<input name="name" required minLength={2}/></label>}
@@ -67,7 +67,7 @@ function Bootstrap({ session, onReady }: { session: Session; onReady: () => void
     const { error } = await supabase.rpc('bootstrap_organization', { full_name_input: fullName, organization_name_input: organizationName, organization_slug_input: slug })
     if (error) return setError(error.message); onReady()
   }
-  return <main className="auth-page"><section className="auth-card"><div className="brand"><span>BS</span><strong>BSNutri</strong></div><h1>Prepare seu espaço</h1><p>Esses dados identificam você e sua clínica.</p><form onSubmit={create}><label>Seu nome<input name="name" defaultValue={session.user.user_metadata.full_name ?? ''} required/></label><label>Nome da clínica<input name="organization" defaultValue="Clínica BS" required/></label>{error && <p className="form-message">{error}</p>}<button className="primary">Criar espaço</button></form></section></main>
+  return <main className="auth-page"><section className="auth-card"><div className="brand"><span className="brand-wolf" role="img" aria-label="Rosto do lobo da BS Nutrição integrada"/><strong>BS Nutrição integrada</strong></div><h1>Prepare seu espaço</h1><p>Esses dados identificam você e sua clínica.</p><form onSubmit={create}><label>Seu nome<input name="name" defaultValue={session.user.user_metadata.full_name ?? ''} required/></label><label>Nome da clínica<input name="organization" defaultValue="Clínica BS" required/></label>{error && <p className="form-message">{error}</p>}<button className="primary">Criar espaço</button></form></section></main>
 }
 
 function PatientDetail({ patient, session, workspace, onBack }: { patient: Patient; session: Session; workspace: Workspace; onBack: () => void }) {

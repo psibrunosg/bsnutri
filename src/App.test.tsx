@@ -6,7 +6,7 @@ describe('App', () => {
   it('apresenta a autenticação do BSNutri', async () => {
     render(<App />)
     expect(await screen.findByText('Bem-vindo de volta')).toBeInTheDocument()
-    expect(screen.getByText('BSNutri')).toBeInTheDocument()
+    expect(screen.getByText('BS Nutrição integrada')).toBeInTheDocument()
   })
 
   it('oferece recuperação de senha por e-mail', async () => {
