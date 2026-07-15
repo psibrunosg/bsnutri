@@ -64,3 +64,48 @@ body{background:var(--paper);color:var(--ink)}
   .sidebar nav,.logout{width:228px}
   .content{margin-left:84px}
 }
+
+/* Correção do menu recolhido e do topo do dashboard */
+.content>header{
+  min-height:86px;
+  padding:20px 24px;
+  border-color:#d9e1d3;
+  background:var(--surface);
+  box-shadow:0 10px 24px #2f5c500d;
+}
+.content>header h1{
+  font-size:clamp(1.9rem,3vw,2.35rem);
+  font-weight:400;
+}
+
+@media (min-width:761px){
+  .sidebar .brand,
+  .sidebar nav,
+  .sidebar .logout{width:52px}
+  .sidebar .brand{gap:0}
+  .sidebar .brand strong::after{font-size:0}
+  .sidebar nav button,
+  .sidebar .logout{
+    width:52px;
+    gap:24px;
+    overflow:hidden;
+    white-space:nowrap;
+  }
+  .sidebar:hover .brand,
+  .sidebar:focus-within .brand,
+  .sidebar:hover nav,
+  .sidebar:focus-within nav,
+  .sidebar:hover .logout,
+  .sidebar:focus-within .logout{width:228px}
+  .sidebar:hover .brand,
+  .sidebar:focus-within .brand{gap:12px}
+  .sidebar:hover .brand strong::after,
+  .sidebar:focus-within .brand strong::after{font-size:1rem}
+  .sidebar:hover nav button,
+  .sidebar:focus-within nav button,
+  .sidebar:hover .logout,
+  .sidebar:focus-within .logout{
+    width:100%;
+    gap:12px;
+  }
+}
