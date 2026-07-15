@@ -1,0 +1,27 @@
+.auth-page {
+  align-content: center;
+  background: #f7f3ee url('./assets/bsnutri-wolf.jpg') center / cover no-repeat;
+  justify-items: start;
+  overflow: hidden;
+  padding: clamp(24px, 7vw, 112px);
+  position: relative;
+}
+
+.auth-card {
+  background: rgb(255 255 255 / 92%);
+  backdrop-filter: blur(8px);
+  margin-left: clamp(0px, 7vw, 120px);
+  position: relative;
+}
+
+@media (max-width: 760px) {
+  .auth-page {
+    background-position: 66% center;
+    justify-items: center;
+    padding: 24px;
+  }
+
+  .auth-card {
+    margin-left: 0;
+  }
+}

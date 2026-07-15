@@ -6,6 +6,7 @@ import { NutritionWorkspace } from './NutritionWorkspace'
 import { PatientPortal } from './PatientPortal'
 import { CareWorkspace } from './CareWorkspace'
 import './App.css'
+import './AuthIllustration.css'
 
 type Workspace = { organization_id: string; role: string; organizations: { name: string } | null }
 type Patient = { id: string; anonymous_code: string; full_name: string; email: string | null; birth_date: string | null; status: string }
