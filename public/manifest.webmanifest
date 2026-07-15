@@ -1,0 +1,16 @@
+{
+  "name": "Clínica BS",
+  "short_name": "Clínica BS",
+  "start_url": "/bsnutri/",
+  "display": "standalone",
+  "background_color": "#F7F3EE",
+  "theme_color": "#3E6B5C",
+  "icons": [
+    {
+      "src": "app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

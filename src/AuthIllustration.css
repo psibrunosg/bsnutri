@@ -1,6 +1,6 @@
 .auth-page {
   align-content: center;
-  background: #f7f3ee url('./assets/bsnutri-wolf.jpg') center / cover no-repeat;
+  background: #f7f3ee url('./assets/bsnutri-wolf.png') center / cover no-repeat;
   justify-items: start;
   overflow: hidden;
   padding: clamp(24px, 7vw, 112px);
@@ -15,7 +15,7 @@
 }
 
 .auth-card .brand-wolf {
-  background: #f7f3ee url('./assets/bsnutri-wolf.jpg') 68% 25% / 370% auto no-repeat;
+  background: #f7f3ee url('./assets/bsnutri-wolf.png') center / cover no-repeat;
   border: 1px solid #a8c3b4;
   border-radius: 50%;
   height: 46px;
