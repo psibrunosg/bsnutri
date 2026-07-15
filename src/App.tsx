@@ -10,8 +10,8 @@ import './AuthIllustration.css'
 
 type Workspace = { organization_id: string; role: string; organizations: { name: string } | null }
 type Patient = { id: string; anonymous_code: string; full_name: string; email: string | null; birth_date: string | null; status: string }
-type Assessment = { id: string; assessed_at: string; objective: string | null; food_preferences: string | null; food_restrictions: string | null; allergies: string | null }
-type Anthropometry = { id: string; measured_at: string; weight_kg: number | null; height_cm: number | null; body_fat_percent: number | null; waist_cm: number | null }
+type Assessment = { id: string; assessed_at: string; objective: string | null; food_preferences: string | null; food_restrictions: string | null; allergies: string | null; clinical_notes: string | null }
+type Anthropometry = { id: string; measured_at: string; weight_kg: number | null; height_cm: number | null; body_fat_percent: number | null; waist_cm: number | null; notes: string | null }
 type PatientAccess = { id: string; full_name: string; anonymous_code: string; organization_id:string; professional_id:string }
 
 type AuthMode = 'login' | 'signup' | 'forgot' | 'recovery'
@@ -76,8 +76,8 @@ function PatientDetail({ patient, session, workspace, onBack }: { patient: Patie
   const [error, setError] = useState('')
   const load = useCallback(async () => {
     const [assessmentResult, measurementResult] = await Promise.all([
-      supabase.from('assessments').select('id,assessed_at,objective,food_preferences,food_restrictions,allergies').eq('patient_id', patient.id).order('assessed_at', { ascending: false }),
-      supabase.from('anthropometry').select('id,measured_at,weight_kg,height_cm,body_fat_percent,waist_cm').eq('patient_id', patient.id).order('measured_at', { ascending: false }),
+      supabase.from('assessments').select('id,assessed_at,objective,food_preferences,food_restrictions,allergies,clinical_notes').eq('patient_id', patient.id).order('assessed_at', { ascending: false }),
+      supabase.from('anthropometry').select('id,measured_at,weight_kg,height_cm,body_fat_percent,waist_cm,notes').eq('patient_id', patient.id).order('measured_at', { ascending: false }),
     ])
     if (assessmentResult.error || measurementResult.error) setError(assessmentResult.error?.message ?? measurementResult.error?.message ?? '')
     else { setAssessments(assessmentResult.data ?? []); setMeasurements(measurementResult.data ?? []) }
@@ -85,22 +85,22 @@ function PatientDetail({ patient, session, workspace, onBack }: { patient: Patie
   useEffect(() => { void load() }, [load])
   async function addAssessment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const data = new FormData(event.currentTarget)
-    const { error } = await supabase.from('assessments').insert({ organization_id: workspace.organization_id, patient_id: patient.id, professional_id: session.user.id, objective: String(data.get('objective')) || null, food_preferences: String(data.get('preferences')) || null, food_restrictions: String(data.get('restrictions')) || null, allergies: String(data.get('allergies')) || null })
+    const { error } = await supabase.from('assessments').insert({ organization_id: workspace.organization_id, patient_id: patient.id, professional_id: session.user.id, objective: String(data.get('objective')) || null, food_preferences: String(data.get('preferences')) || null, food_restrictions: String(data.get('restrictions')) || null, allergies: String(data.get('allergies')) || null, clinical_notes: String(data.get('clinicalNotes')) || null })
     if (error) setError(error.message); else { event.currentTarget.reset(); await load() }
   }
   async function addMeasurement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const data = new FormData(event.currentTarget); const number = (key: string) => { const value = String(data.get(key)).replace(',', '.'); return value ? Number(value) : null }
     const weight = number('weight'); const height = number('height'); const fat = number('fat'); const waist = number('waist')
     if (!weight || !height || weight <= 0 || height <= 0 || (fat !== null && (fat < 0 || fat > 100)) || (waist !== null && waist <= 0)) return setError('Revise as medidas. Peso e altura devem ser positivos, e gordura deve estar entre 0 e 100%.')
-    const { error } = await supabase.from('anthropometry').insert({ organization_id: workspace.organization_id, patient_id: patient.id, created_by: session.user.id, weight_kg: weight, height_cm: height, body_fat_percent: fat, waist_cm: waist })
+    const { error } = await supabase.from('anthropometry').insert({ organization_id: workspace.organization_id, patient_id: patient.id, created_by: session.user.id, weight_kg: weight, height_cm: height, body_fat_percent: fat, waist_cm: waist, notes: String(data.get('notes')) || null })
     if (error) setError(error.message); else { event.currentTarget.reset(); await load() }
   }
   const imc = (item: Anthropometry) => item.weight_kg && item.height_cm ? (item.weight_kg / ((item.height_cm / 100) ** 2)).toFixed(1).replace('.', ',') : '—'
   return <section className="detail"><button className="back" onClick={onBack}>← Voltar para pacientes</button><div className="detail-heading"><div className="avatar">{patient.full_name.slice(0,2).toUpperCase()}</div><div><small>{patient.anonymous_code}</small><h1>{patient.full_name}</h1></div></div>{error && <div className="notice error" role="alert">{error}</div>}
-    <div className="detail-grid"><section className="panel"><h2>Nova avaliação</h2><form onSubmit={addAssessment}><label>Objetivo<input name="objective" maxLength={500}/></label><label>Preferências alimentares<input name="preferences" maxLength={1000}/></label><label>Restrições alimentares<input name="restrictions" maxLength={1000}/></label><label>Alergias<input name="allergies" maxLength={1000}/></label><button className="primary">Salvar avaliação</button></form></section>
-    <section className="panel"><h2>Nova antropometria</h2><form onSubmit={addMeasurement}><div className="field-row"><label>Peso (kg)<input name="weight" inputMode="decimal" required placeholder="Ex.: 72,5"/></label><label>Altura (cm)<input name="height" inputMode="decimal" required placeholder="Ex.: 175"/></label></div><div className="field-row"><label>Gordura (%)<input name="fat" inputMode="decimal" placeholder="Opcional"/></label><label>Cintura (cm)<input name="waist" inputMode="decimal" placeholder="Opcional"/></label></div><button className="primary">Salvar medidas</button></form></section></div>
-    <div className="detail-grid histories"><section className="panel"><h2>Histórico de avaliações</h2>{assessments.length ? assessments.map(a => <article className="history" key={a.id}><time>{new Date(a.assessed_at).toLocaleDateString('pt-BR')}</time><strong>{a.objective || 'Sem objetivo informado'}</strong>{a.allergies && <p>Alergias: {a.allergies}</p>}</article>) : <p className="muted">Nenhuma avaliação registrada.</p>}</section>
-    <section className="panel"><h2>Evolução antropométrica</h2>{measurements.length ? measurements.map(m => <article className="history measurement" key={m.id}><time>{new Date(m.measured_at).toLocaleDateString('pt-BR')}</time><span><strong>{m.weight_kg?.toLocaleString('pt-BR')} kg</strong> · {m.height_cm?.toLocaleString('pt-BR')} cm</span><p>IMC: {imc(m)}{m.body_fat_percent !== null ? ` · Gordura: ${m.body_fat_percent}%` : ''}{m.waist_cm !== null ? ` · Cintura: ${m.waist_cm} cm` : ''}</p></article>) : <p className="muted">Nenhuma medida registrada.</p>}</section></div></section>
+    <div className="detail-grid"><section className="panel"><h2>Nova avaliação</h2><form onSubmit={addAssessment}><label>Objetivo<input name="objective" maxLength={500}/></label><label>Preferências alimentares<input name="preferences" maxLength={1000}/></label><label>Restrições alimentares<input name="restrictions" maxLength={1000}/></label><label>Alergias<input name="allergies" maxLength={1000}/></label><label>Observações clínicas<textarea name="clinicalNotes" maxLength={2000}/></label><button className="primary">Salvar avaliação</button></form></section>
+    <section className="panel"><h2>Nova antropometria</h2><form onSubmit={addMeasurement}><div className="field-row"><label>Peso (kg)<input name="weight" inputMode="decimal" required placeholder="Ex.: 72,5"/></label><label>Altura (cm)<input name="height" inputMode="decimal" required placeholder="Ex.: 175"/></label></div><div className="field-row"><label>Gordura (%)<input name="fat" inputMode="decimal" placeholder="Opcional"/></label><label>Cintura (cm)<input name="waist" inputMode="decimal" placeholder="Opcional"/></label></div><label>Observações da medida<textarea name="notes" maxLength={1000}/></label><button className="primary">Salvar medidas</button></form></section></div>
+    <div className="detail-grid histories"><section className="panel"><h2>Histórico de avaliações</h2>{assessments.length ? assessments.map(a => <article className="history" key={a.id}><time>{new Date(a.assessed_at).toLocaleDateString('pt-BR')}</time><strong>{a.objective || 'Sem objetivo informado'}</strong>{a.allergies && <p>Alergias: {a.allergies}</p>}{a.clinical_notes && <p>{a.clinical_notes}</p>}</article>) : <p className="muted">Nenhuma avaliação registrada.</p>}</section>
+    <section className="panel"><h2>Evolução antropométrica</h2>{measurements.length ? measurements.map(m => <article className="history measurement" key={m.id}><time>{new Date(m.measured_at).toLocaleDateString('pt-BR')}</time><span><strong>{m.weight_kg?.toLocaleString('pt-BR')} kg</strong> · {m.height_cm?.toLocaleString('pt-BR')} cm</span><p>IMC: {imc(m)}{m.body_fat_percent !== null ? ` · Gordura: ${m.body_fat_percent}%` : ''}{m.waist_cm !== null ? ` · Cintura: ${m.waist_cm} cm` : ''}</p>{m.notes && <p>{m.notes}</p>}</article>) : <p className="muted">Nenhuma medida registrada.</p>}</section></div></section>
 }
 
 function Dashboard({ session, workspace }: { session: Session; workspace: Workspace }) {
