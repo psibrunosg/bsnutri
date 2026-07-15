@@ -87,9 +87,20 @@ body{background:var(--paper);color:var(--ink)}
   .sidebar nav button,
   .sidebar .logout{
     width:52px;
-    gap:24px;
+    justify-content:center;
+    gap:0;
     overflow:hidden;
     white-space:nowrap;
+  }
+  .sidebar nav button span,
+  .sidebar .logout span,
+  .sidebar nav button:not(:has(span)){
+    font-size:0;
+  }
+  .sidebar nav button svg,
+  .sidebar .logout svg{
+    flex:0 0 20px;
+    margin:0;
   }
   .sidebar:hover .brand,
   .sidebar:focus-within .brand,
@@ -106,6 +117,15 @@ body{background:var(--paper);color:var(--ink)}
   .sidebar:hover .logout,
   .sidebar:focus-within .logout{
     width:100%;
+    justify-content:flex-start;
     gap:12px;
+  }
+  .sidebar:hover nav button span,
+  .sidebar:focus-within nav button span,
+  .sidebar:hover .logout span,
+  .sidebar:focus-within .logout span,
+  .sidebar:hover nav button:not(:has(span)),
+  .sidebar:focus-within nav button:not(:has(span)){
+    font-size:inherit;
   }
 }
