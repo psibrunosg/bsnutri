@@ -1,6 +1,6 @@
 .auth-page {
   align-content: center;
-  background: #f7f3ee url('./assets/bsnutri-wolf.png') center / cover no-repeat;
+  background: #f7f3ee url('./assets/bsnutri-wolf.jpg') center / cover no-repeat;
   justify-items: start;
   overflow: hidden;
   padding: clamp(24px, 7vw, 112px);
