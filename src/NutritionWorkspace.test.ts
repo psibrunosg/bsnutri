@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canPublishPlan, canReviewPlan, clinicalPresets, completeAssistantStep, getPlanQualityIssues, initialAssistantState, suggestMicronutrients } from './lib/planAssistant'
+import { canPublishPlan, canReviewPlan, clinicalPresets, completeAssistantStep, getPlanQualityIssues, initialAssistantState, sanitizePlanVisibility, suggestMicronutrients } from './lib/planAssistant'
 import { mapDraftRows } from './lib/planDrafts'
 
 describe('mapDraftRows', () => {
@@ -33,7 +33,7 @@ describe('mapDraftRows', () => {
       plan_versions: [{
         id: 'v1',
         version_no: 1,
-        assistant_state: { currentStep: 'meals', completedSteps: ['objective', 'targets'], objective: 'Hipertrofia', clinicalPresets: ['hypertrophy'], priorityMicronutrients: ['Ferro'] },
+        assistant_state: { currentStep: 'meals', completedSteps: ['objective', 'targets'], objective: 'Hipertrofia', clinicalPresets: ['hypertrophy'], priorityMicronutrients: ['Ferro'], visibility: { showTotalKcal: true, showTotalMacros: false, showMealCalculations: true } },
         plan_days: [],
       }],
     }])
@@ -44,6 +44,7 @@ describe('mapDraftRows', () => {
       objective: 'Hipertrofia',
       clinicalPresets: ['hypertrophy'],
       priorityMicronutrients: ['Ferro'],
+      visibility: { showTotalKcal: true, showTotalMacros: false, showMealCalculations: true },
     })
   })
 })
@@ -76,5 +77,13 @@ describe('plan assistant', () => {
       'Informe meta de agua.',
       'Informe micronutrientes prioritarios.',
     ])
+  })
+
+  it('normaliza controles de visibilidade do portal', () => {
+    expect(sanitizePlanVisibility({ showTotalKcal: true, showTotalMacros: 'yes', showMealCalculations: true })).toEqual({
+      showTotalKcal: true,
+      showTotalMacros: false,
+      showMealCalculations: true,
+    })
   })
 })

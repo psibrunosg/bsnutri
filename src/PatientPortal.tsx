@@ -8,6 +8,7 @@ import {
   Utensils,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
+import { sanitizePlanVisibility, type PlanVisibility } from "./lib/planAssistant";
 
 type PatientAccess = {
   id: string;
@@ -27,7 +28,7 @@ type Item = {
   id: string;
   description: string;
   grams: number;
-  nutrient_snapshot: { food_name?: string; preparation_state?: string } | null;
+  nutrient_snapshot: { food_name?: string; preparation_state?: string; energyKcal?: number; proteinG?: number; carbohydrateG?: number; fatG?: number; nutrients?: { code: string; amount: number }[] } | null;
   meal_item_substitutions: Substitution[];
 };
 type Meal = {
@@ -38,7 +39,7 @@ type Meal = {
   meal_items: Item[];
 };
 type Day = { id: string; label: string; day_index: number; meals: Meal[] };
-type Version = { id: string; version_no: number; plan_days: Day[] };
+type Version = { id: string; version_no: number; assistant_state?: unknown; plan_days: Day[] };
 type Plan = {
   id: string;
   title: string;
@@ -63,6 +64,41 @@ type ShoppingItem = {
   total_grams: number;
   occurrences: number;
 };
+type NutritionSummary = { energyKcal: number; proteinG: number; carbohydrateG: number; fatG: number };
+
+function itemAmount(item: Item, code: keyof NutritionSummary, snapshotCode: string) {
+  const snapshot = item.nutrient_snapshot;
+  return Number(snapshot?.[code] ?? snapshot?.nutrients?.find((n) => n.code === snapshotCode)?.amount ?? 0);
+}
+
+function mealSummary(meal: Meal): NutritionSummary {
+  return meal.meal_items.reduce((total, item) => ({
+    energyKcal: total.energyKcal + itemAmount(item, "energyKcal", "energy_kcal"),
+    proteinG: total.proteinG + itemAmount(item, "proteinG", "protein_g"),
+    carbohydrateG: total.carbohydrateG + itemAmount(item, "carbohydrateG", "carbohydrate_g"),
+    fatG: total.fatG + itemAmount(item, "fatG", "fat_g"),
+  }), { energyKcal: 0, proteinG: 0, carbohydrateG: 0, fatG: 0 });
+}
+
+function planSummary(version: Version): NutritionSummary {
+  return version.plan_days.flatMap((day) => day.meals).reduce((total, meal) => {
+    const mealTotal = mealSummary(meal);
+    return {
+      energyKcal: total.energyKcal + mealTotal.energyKcal,
+      proteinG: total.proteinG + mealTotal.proteinG,
+      carbohydrateG: total.carbohydrateG + mealTotal.carbohydrateG,
+      fatG: total.fatG + mealTotal.fatG,
+    };
+  }, { energyKcal: 0, proteinG: 0, carbohydrateG: 0, fatG: 0 });
+}
+
+function CalculationSummary({ summary, visibility, meal = false }: { summary: NutritionSummary; visibility: PlanVisibility; meal?: boolean }) {
+  if (!visibility.showTotalKcal && !visibility.showTotalMacros && !visibility.showMealCalculations) return null;
+  const showKcal = meal ? visibility.showMealCalculations : visibility.showTotalKcal;
+  const showMacros = meal ? visibility.showMealCalculations : visibility.showTotalMacros;
+  if (!showKcal && !showMacros) return null;
+  return <p className={meal ? "portal-meal-total" : "portal-plan-total"}>{showKcal&&<span>{Math.round(summary.energyKcal).toLocaleString("pt-BR")} kcal</span>}{showMacros&&<span>P {summary.proteinG.toLocaleString("pt-BR")} g · C {summary.carbohydrateG.toLocaleString("pt-BR")} g · G {summary.fatG.toLocaleString("pt-BR")} g</span>}</p>;
+}
 
 export function PatientPortal({ patient }: { patient: PatientAccess }) {
   const [plans, setPlans] = useState<Plan[]>([]),
@@ -77,7 +113,7 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
       supabase
         .from("plans")
         .select(
-          "id,title,published_at,plan_versions!plans_current_version_tenant_fkey(id,version_no,plan_days(id,label,day_index,meals(id,label,position,suggested_time,meal_items(id,description,grams,nutrient_snapshot,meal_item_substitutions(id,description,grams,unit,professional_note,is_active)))))",
+          "id,title,published_at,plan_versions!plans_current_version_tenant_fkey(id,version_no,assistant_state,plan_days(id,label,day_index,meals(id,label,position,suggested_time,meal_items(id,description,grams,nutrient_snapshot,meal_item_substitutions(id,description,grams,unit,professional_note,is_active)))))",
         )
         .eq("patient_id", patient.id)
         .in("status", ["published", "scheduled"])
@@ -325,6 +361,8 @@ function PlanCard({
   reload: () => Promise<void>;
 }) {
   const version = plan.plan_versions;
+  const visibility = sanitizePlanVisibility((version?.assistant_state as { visibility?: unknown } | undefined)?.visibility);
+  const totals = version ? planSummary(version) : { energyKcal: 0, proteinG: 0, carbohydrateG: 0, fatG: 0 };
   return (
     <article className="portal-plan">
       <header>
@@ -339,6 +377,7 @@ function PlanCard({
           </time>
         )}
       </header>
+      <CalculationSummary summary={totals} visibility={visibility}/>
       {version?.plan_days
         ?.sort((a, b) => a.day_index - b.day_index)
         .map((day) => (
@@ -353,6 +392,7 @@ function PlanCard({
                     {meal.suggested_time && (
                       <time>{meal.suggested_time.slice(0, 5)}</time>
                     )}
+                    <CalculationSummary summary={mealSummary(meal)} visibility={visibility} meal/>
                   </div>
                   <div>
                     <ul>

@@ -11,6 +11,13 @@ export type PlanAssistantState = {
   objective: string
   clinicalPresets: ClinicalPreset[]
   priorityMicronutrients: string[]
+  visibility: PlanVisibility
+}
+
+export type PlanVisibility = {
+  showTotalKcal: boolean
+  showTotalMacros: boolean
+  showMealCalculations: boolean
 }
 
 export const assistantLabels: Record<PlanAssistantStep, string> = {
@@ -51,7 +58,20 @@ const requiredTargets: [string, string[]][] = [
 ]
 
 export function initialAssistantState(): PlanAssistantState {
-  return { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [] }
+  return { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [], visibility: defaultPlanVisibility() }
+}
+
+export function defaultPlanVisibility(): PlanVisibility {
+  return { showTotalKcal: false, showTotalMacros: false, showMealCalculations: false }
+}
+
+export function sanitizePlanVisibility(value: unknown): PlanVisibility {
+  const source = value && typeof value === 'object' ? value as Partial<PlanVisibility> : {}
+  return {
+    showTotalKcal: source.showTotalKcal === true,
+    showTotalMacros: source.showTotalMacros === true,
+    showMealCalculations: source.showMealCalculations === true,
+  }
 }
 
 export function suggestMicronutrients(presets: ClinicalPreset[]): string[] {
@@ -77,6 +97,7 @@ export function sanitizeAssistantState(value: unknown): PlanAssistantState {
     priorityMicronutrients: Array.isArray(source.priorityMicronutrients)
       ? source.priorityMicronutrients.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim())
       : [],
+    visibility: sanitizePlanVisibility(source.visibility),
   }
 }
 
