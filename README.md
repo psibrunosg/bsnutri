@@ -145,18 +145,21 @@ O MVP so pode ser chamado de concluido quando estas 3 jornadas estiverem provada
 ### Estado real em sexta-feira, 17 de julho de 2026
 
 1. `profissional`: provado no deploy publicado
-2. `paciente`: parcial
-3. `recepcao`: pendente no deploy publicado
+2. `paciente`: provado no deploy publicado
+3. `recepcao`: provado no deploy publicado
 4. `lint`, `test` e `build`: provados localmente
 5. suites SQL centrais: provadas
+6. hardening minimo do Supabase: fechado
+7. reproducao final do piloto: consolidada
 
 ### Artefatos de apoio
 
 1. `docs/MVP_INDEX.md`
 2. `docs/MVP_AUDITORIA_STATUS.md`
 3. `docs/MVP_CHECKLIST_FINAL.md`
-4. `work/MVP_FECHAMENTO_FINAL.md`
-5. `G:\Meu Drive\0.Jarvis\11_handoffs\bsnutri_17_07_2026_0925.md`
+4. `docs/MVP_PILOTO_REPRODUCAO_FINAL.md`
+5. `work/MVP_FECHAMENTO_FINAL.md`
+6. `G:\Meu Drive\0.Jarvis\11_handoffs\bsnutri_17_07_2026_0925.md`
 
 ## Fluxo de contribuicao
 

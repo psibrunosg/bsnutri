@@ -1,6 +1,6 @@
 # Checklist final do MVP BSNutri
 
-Atualizado em 17/07/2026 10:06.
+Atualizado em sexta-feira, 17 de julho de 2026, apos o deploy do commit `dabbf0c`.
 
 ## Quando pode chamar de MVP concluido
 
@@ -39,6 +39,25 @@ Em sexta-feira, 17 de julho de 2026:
 1. `npm run lint`: aprovado
 2. `npm test`: 3 arquivos e 9 testes aprovados
 3. `npm run build`: aprovado com geracao de `dist/`
+
+## Evidencia de producao mais recente
+
+No deploy publicado apos o commit `dabbf0c`:
+
+1. `profissional`: entrou e abriu `Pacientes`
+2. `recepcao`: entrou e abriu `Agenda e adesão`
+3. `paciente`: entrou e abriu `Olá, Paciente`
+4. nao houve erros de rede nas 3 jornadas
+5. nao houve chamada indevida de `claim_patient_access`
+
+## Hardening minimo fechado
+
+Em sexta-feira, 17 de julho de 2026:
+
+1. `npx --yes supabase@latest db advisors --type security --db-url ...`: `No issues found`
+2. `password_min_length`: confirmado em `8`
+3. `password_hibp_enabled`: mantido em `false` por decisao registrada do piloto
+4. reproducao final consolidada em `docs/MVP_PILOTO_REPRODUCAO_FINAL.md`
 
 ## Gates finais
 

@@ -54,13 +54,11 @@ Em sexta-feira, 17 de julho de 2026:
 1. `lint`, `test` e `build` estao provados localmente
 2. suites SQL centrais estao provadas
 3. `profissional` esta provado no deploy publicado
-4. `paciente` esta parcial
-5. `recepcao` esta pendente no deploy publicado
-6. o MVP ainda nao esta concluido
+4. `paciente` esta provado no deploy publicado
+5. `recepcao` esta provada no deploy publicado
+6. o MVP esta concluido
+7. a reproducao final do piloto esta consolidada
 
 ## Proximo passo unico
 
-1. publicar a versao atual em `main`
-2. esperar `validate` e `deploy` verdes
-3. repetir o smoke com `mvp2.profissional@teste.com`, `mvp2.recepcao@teste.com` e `mvp2.paciente@teste.com`
-4. registrar o hardening minimo final
+1. usar `docs/MVP_PILOTO_REPRODUCAO_FINAL.md` se precisar repetir a validacao em outro computador
