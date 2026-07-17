@@ -35,7 +35,9 @@ type Alert = {
   message: string;
   status: string;
   detected_at: string;
-  patients: { full_name: string } | null;
+  patient_name?: string | null;
+  priority_score?: number;
+  patients?: { full_name: string } | null;
 };
 const statusLabel: Record<string, string> = {
   requested: "Solicitado",
@@ -82,11 +84,12 @@ export function CareWorkspace({
         .order("occurred_on", { ascending: false })
         .limit(50),
       supabase
-        .from("adherence_alerts")
+        .from("follow_up_queue")
         .select(
-          "id,kind,severity,message,status,detected_at,patients(full_name)",
+          "id,kind,severity,message,status,detected_at,patient_name,priority_score",
         )
         .eq("organization_id", organizationId)
+        .order("priority_score", { ascending: false })
         .order("detected_at", { ascending: false })
         .limit(50),
     ]);
@@ -169,6 +172,27 @@ export function CareWorkspace({
     const { error } = await supabase.rpc("update_alert_status", {
       target_id: id,
       target_status: status,
+    });
+    if (error) setError(error.message);
+    else await load();
+  }
+  async function createFollowUpAction(
+    id: string,
+    action: "guidance" | "review_request" | "substitution_request" | "followed_up",
+  ) {
+    const labels = {
+      guidance: "Orientacao curta para o paciente:",
+      review_request: "O que deve ser revisado no plano?",
+      substitution_request: "Qual troca/substituicao deve ser avaliada?",
+      followed_up: "",
+    };
+    const note =
+      action === "followed_up" ? null : window.prompt(labels[action])?.trim();
+    if (action !== "followed_up" && !note) return;
+    const { error } = await supabase.rpc("create_follow_up_action", {
+      target_alert_id: id,
+      target_action: action,
+      target_note: note,
     });
     if (error) setError(error.message);
     else await load();
@@ -327,7 +351,7 @@ export function CareWorkspace({
                     <AlertTriangle />
                     <div>
                       <strong>
-                        {a.patients?.full_name ?? "Paciente"} · {a.message}
+                        {a.patient_name ?? a.patients?.full_name ?? "Paciente"} · {a.message}
                       </strong>
                       <small>
                         {a.severity === "urgent"
@@ -335,7 +359,7 @@ export function CareWorkspace({
                           : a.severity === "attention"
                             ? "Atenção"
                             : "Informativo"}{" "}
-                        · {new Date(a.detected_at).toLocaleString("pt-BR")}
+                        · Prioridade {a.priority_score ?? 0} · {new Date(a.detected_at).toLocaleString("pt-BR")}
                       </small>
                     </div>
                     <span className={`care-status ${a.status}`}>
@@ -349,11 +373,32 @@ export function CareWorkspace({
                           Reconhecer
                         </button>
                       )}
+                      <button
+                        onClick={() => void createFollowUpAction(a.id, "guidance")}
+                      >
+                        Orientar
+                      </button>
+                      <button
+                        onClick={() =>
+                          void createFollowUpAction(a.id, "review_request")
+                        }
+                      >
+                        Revisar plano
+                      </button>
+                      <button
+                        onClick={() =>
+                          void createFollowUpAction(a.id, "substitution_request")
+                        }
+                      >
+                        Pedir troca
+                      </button>
                       {a.status !== "resolved" && (
                         <button
-                          onClick={() => void updateAlert(a.id, "resolved")}
+                          onClick={() =>
+                            void createFollowUpAction(a.id, "followed_up")
+                          }
                         >
-                          Resolver
+                          Acompanhado
                         </button>
                       )}
                     </div>
