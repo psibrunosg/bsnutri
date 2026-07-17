@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(16);
 
 set local role postgres;
 
@@ -53,7 +53,8 @@ insert into public.meal_items (id,organization_id,meal_id,position,description,q
 set local role authenticated;
 select set_config('request.jwt.claim.sub','11000000-0000-0000-0000-000000000001',true);
 select set_config('request.jwt.claim.role','authenticated',true);
-select lives_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":2000,"protein_g":100}'::jsonb)$$,'nutricionista revisa versão com metas');
+select throws_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":2000,"protein_g":100}'::jsonb)$$,null,null,'assistente incompleto bloqueia revisao');
+select lives_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":2000,"protein_g":100}'::jsonb,'{"currentStep":"review","completedSteps":["objective","targets","meals","equivalents"],"objective":"Plano clinico"}'::jsonb)$$,'nutricionista revisa versão com metas');
 select lives_ok($$select public.publish_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001')$$,'nutricionista publica versão revisada');
 select ok((select locked_at is not null and published_at is not null and content_hash is not null from public.plan_versions where id='51000000-0000-0000-0000-000000000001'),'publicação bloqueia e assina a versão');
 select is((select targets->>'energy_kcal' from public.plan_versions where id='51000000-0000-0000-0000-000000000001'),'2000','metas revisadas ficam preservadas');
