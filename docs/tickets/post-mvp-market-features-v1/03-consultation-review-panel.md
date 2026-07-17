@@ -4,11 +4,17 @@
 
 **Blocked by:** 02 - Fluxo de pre-consulta do paciente.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Profissional abre painel a partir do paciente.
-- [ ] Painel mostra respostas enviadas por data e versao.
-- [ ] Painel mostra medidas e exames recentes ja existentes.
-- [ ] Profissional registra resumo clinico curto da consulta.
-- [ ] Resumo fica ligado ao paciente e ao autor.
-- [ ] Recepcao nao ve o painel clinico.
+- [x] Profissional abre painel a partir do paciente.
+- [x] Painel mostra respostas enviadas por data e versao.
+- [x] Painel mostra medidas e exames recentes ja existentes.
+- [x] Profissional registra resumo clinico curto da consulta.
+- [x] Resumo fica ligado ao paciente e ao autor.
+- [x] Recepcao nao ve o painel clinico.
+
+## Implementacao
+
+- Painel reaproveita `PatientDetail.tsx`.
+- Resumos em `consultation_summaries`.
+- RLS clinica cobre bloqueio da recepcao.

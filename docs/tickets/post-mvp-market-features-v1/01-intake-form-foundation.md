@@ -4,11 +4,16 @@
 
 **Blocked by:** None - can start immediately.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Clinica cria template de formulario.
-- [ ] Template publicado gera versao imutavel.
-- [ ] Campo suporta texto curto, texto longo, numero, escala, selecao e data.
-- [ ] Resposta aponta para a versao respondida.
-- [ ] Recepcao nao acessa respostas clinicas.
-- [ ] Ha teste SQL de RLS por papel e organizacao.
+- [x] Clinica cria template de formulario.
+- [x] Template publicado gera versao imutavel.
+- [x] Campo suporta texto curto, texto longo, numero, escala, selecao e data.
+- [x] Resposta aponta para a versao respondida.
+- [x] Recepcao nao acessa respostas clinicas.
+- [x] Ha teste SQL de RLS por papel e organizacao.
+
+## Implementacao
+
+- Migration: `20260717160000_intake_consultation_templates.sql`.
+- Teste SQL: `post_mvp_market_features.test.sql`.

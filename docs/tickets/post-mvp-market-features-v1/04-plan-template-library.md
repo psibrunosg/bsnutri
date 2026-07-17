@@ -4,11 +4,17 @@
 
 **Blocked by:** None - can start after current editor is stable.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Profissional salva plano como modelo da organizacao.
-- [ ] Modelo tem nome, objetivo e tags.
-- [ ] Modelo pode ser copiado para novo plano do paciente.
-- [ ] Alterar modelo nao altera plano ja copiado.
-- [ ] Apenas equipe clinica acessa modelos.
-- [ ] Ha teste SQL de copia independente.
+- [x] Profissional salva plano como modelo da organizacao.
+- [x] Modelo tem nome, objetivo e tags.
+- [x] Modelo pode ser copiado para novo plano do paciente.
+- [x] Alterar modelo nao altera plano ja copiado.
+- [x] Apenas equipe clinica acessa modelos.
+- [x] Ha teste SQL de copia independente.
+
+## Implementacao
+
+- Biblioteca simples em `NutritionWorkspace.tsx`.
+- RPCs: `create_plan_template_from_plan` e `copy_plan_template_to_patient`.
+- Teste SQL: `post_mvp_market_features.test.sql`.

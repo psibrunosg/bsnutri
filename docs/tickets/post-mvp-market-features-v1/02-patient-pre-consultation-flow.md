@@ -4,11 +4,17 @@
 
 **Blocked by:** 01 - Base versionada de formularios de anamnese.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Profissional atribui formulario publicado ao paciente.
-- [ ] Paciente ve tarefa pendente no portal.
-- [ ] Paciente salva rascunho sem enviar.
-- [ ] Envio valida campos obrigatorios.
-- [ ] Profissional ve status pendente, rascunho ou enviado.
-- [ ] Ha teste de interface mobile-basico do envio.
+- [x] Profissional atribui formulario publicado ao paciente.
+- [x] Paciente ve tarefa pendente no portal.
+- [x] Paciente salva rascunho sem enviar.
+- [x] Envio valida campos obrigatorios.
+- [x] Profissional ve status pendente, rascunho ou enviado.
+- [x] Ha teste de interface mobile-basico do envio.
+
+## Implementacao
+
+- Portal: `PatientPortal.tsx`.
+- Prontuario profissional: `PatientDetail.tsx`.
+- Teste UI: `PatientPortal.test.tsx`.

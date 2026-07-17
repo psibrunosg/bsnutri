@@ -65,6 +65,13 @@ type ShoppingItem = {
   total_grams: number;
   occurrences: number;
 };
+type IntakeField = { id: string; label: string; field_type: string; required: boolean; position: number };
+type IntakeAssignment = {
+  id: string;
+  status: string;
+  form_template_versions: { title: string; form_fields: IntakeField[] } | null;
+  form_responses: { values: Record<string, string> }[];
+};
 type DriveStatus = { status: "missing" | "connected"; can_upload_photos: boolean };
 const driveClient = createDriveClient();
 type NutritionSummary = { energyKcal: number; proteinG: number; carbohydrateG: number; fatG: number };
@@ -107,13 +114,14 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
   const [plans, setPlans] = useState<Plan[]>([]),
     [appointments, setAppointments] = useState<Appointment[]>([]),
     [requests, setRequests] = useState<SwapRequest[]>([]),
+    [intakeAssignments, setIntakeAssignments] = useState<IntakeAssignment[]>([]),
     [drive, setDrive] = useState<DriveStatus>({ status: "missing", can_upload_photos: false }),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [p, a, r, d] = await Promise.all([
+    const [p, a, r, i, d] = await Promise.all([
       supabase
         .from("plans")
         .select(
@@ -132,15 +140,21 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
         .select("id,substitution_id,status,professional_note")
         .eq("patient_id", patient.id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("form_assignments")
+        .select("id,status,form_template_versions(title,form_fields(id,label,field_type,required,position)),form_responses(values)")
+        .eq("patient_id", patient.id)
+        .order("assigned_at", { ascending: false }),
       supabase.rpc("get_patient_drive_status", { target_patient_id: patient.id }),
     ]);
-    const first = p.error ?? a.error ?? r.error ?? d.error;
+    const first = p.error ?? a.error ?? r.error ?? i.error ?? d.error;
     if (first)
       setError(`Não foi possível carregar seus dados: ${first.message}`);
     else {
       setPlans((p.data ?? []) as unknown as Plan[]);
       setAppointments(a.data ?? []);
       setRequests(r.data ?? []);
+      setIntakeAssignments((i.data ?? []) as unknown as IntakeAssignment[]);
       setDrive(((d.data as DriveStatus[] | null)?.[0]) ?? { status: "missing", can_upload_photos: false });
     }
     setLoading(false);
@@ -176,6 +190,15 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
       event.currentTarget.reset();
       await load();
     }
+  }
+  async function saveIntake(form: HTMLFormElement, assignment: IntakeAssignment, submit: boolean) {
+    const { error } = await supabase.rpc("save_form_response", {
+      target_assignment_id: assignment.id,
+      target_values: Object.fromEntries(new FormData(form).entries()),
+      target_submit: submit,
+    });
+    if (error) setError(error.message);
+    else await load();
   }
   return (
     <main className="patient-portal">
@@ -251,6 +274,39 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
           </p>
         ))}
       </section>
+      {intakeAssignments.length > 0 && (
+        <section className="panel portal-intake">
+          <h2>Pre-consulta</h2>
+          {intakeAssignments.map((assignment) => {
+            const values = assignment.form_responses?.[0]?.values ?? {};
+            const fields = assignment.form_template_versions?.form_fields ?? [];
+            return (
+              <form key={assignment.id} onSubmit={(event) => { event.preventDefault(); void saveIntake(event.currentTarget, assignment, true); }}>
+                <strong>{assignment.form_template_versions?.title ?? "Formulario"}</strong>
+                <small>{assignment.status === "submitted" ? "Enviado" : assignment.status === "draft" ? "Rascunho salvo" : "Pendente"}</small>
+                {fields.sort((a, b) => a.position - b.position).map((field) => (
+                  <label key={field.id}>
+                    {field.label}{field.required ? " *" : ""}
+                    {field.field_type === "long_text" ? (
+                      <textarea name={field.id} defaultValue={values[field.id] ?? ""} required={field.required} />
+                    ) : field.field_type === "date" ? (
+                      <input name={field.id} type="date" defaultValue={values[field.id] ?? ""} required={field.required} />
+                    ) : (
+                      <input name={field.id} type={field.field_type === "number" || field.field_type === "scale" ? "number" : "text"} min={field.field_type === "scale" ? 0 : undefined} max={field.field_type === "scale" ? 10 : undefined} defaultValue={values[field.id] ?? ""} required={field.required} />
+                    )}
+                  </label>
+                ))}
+                {assignment.status !== "submitted" && (
+                  <div className="care-actions">
+                    <button className="secondary" type="button" onClick={(event) => void saveIntake(event.currentTarget.form!, assignment, false)}>Salvar rascunho</button>
+                    <button className="primary">Enviar pre-consulta</button>
+                  </div>
+                )}
+              </form>
+            );
+          })}
+        </section>
+      )}
       {plans.length > 0 && <ShoppingList patientId={patient.id} />}{" "}
       {loading ? (
         <div className="portal-empty">Carregando plano...</div>

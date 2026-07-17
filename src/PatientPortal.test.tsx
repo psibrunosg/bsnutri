@@ -166,4 +166,33 @@ describe('PatientPortal visibility controls', () => {
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ state: 'adapted', hunger_before: 8, satiety_after: 5, symptoms: 'Azia', symptom_intensity: 7, help_requested: true }), { onConflict: 'patient_id,meal_id,occurred_on' })
     expect(uploadMock).not.toHaveBeenCalled()
   })
+
+  it('salva rascunho e envia pre-consulta', async () => {
+    const assignment = {
+      id: 'assignment-1',
+      status: 'pending',
+      form_template_versions: {
+        title: 'Anamnese adulto',
+        form_fields: [
+          { id: 'field-1', label: 'Objetivo principal', field_type: 'short_text', required: true, position: 0 },
+          { id: 'field-2', label: 'Rotina alimentar', field_type: 'long_text', required: false, position: 1 },
+        ],
+      },
+      form_responses: [],
+    }
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'plans') return queryResult(plan({}))
+      if (table === 'form_assignments') return queryResult([assignment])
+      return queryResult([])
+    })
+
+    render(<PatientPortal patient={patient}/>)
+    await screen.findByText('Anamnese adulto')
+    fireEvent.change(screen.getByLabelText(/Objetivo principal/i), { target: { value: 'Hipertrofia' } })
+    fireEvent.click(screen.getByRole('button', { name: /Salvar rascunho/i }))
+    expect(rpcMock).toHaveBeenCalledWith('save_form_response', expect.objectContaining({ target_assignment_id: 'assignment-1', target_submit: false }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Enviar pre-consulta/i }))
+    expect(rpcMock).toHaveBeenCalledWith('save_form_response', expect.objectContaining({ target_assignment_id: 'assignment-1', target_submit: true }))
+  })
 })
