@@ -3,6 +3,7 @@ export const assistantSteps = ['objective', 'targets', 'meals', 'equivalents', '
 export type PlanAssistantStep = (typeof assistantSteps)[number]
 export const clinicalPresets = ['weight_loss', 'hypertrophy', 'insulin_resistance', 'hypertension', 'vegetarian', 'child_teen'] as const
 export type ClinicalPreset = (typeof clinicalPresets)[number]
+type PlanTargets = Record<string, number | undefined>
 
 export type PlanAssistantState = {
   currentStep: PlanAssistantStep
@@ -40,6 +41,14 @@ const presetMicronutrients: Record<ClinicalPreset, string[]> = {
 }
 
 const requiredBeforeReview: PlanAssistantStep[] = ['objective', 'targets', 'meals', 'equivalents']
+const requiredTargets: [string, string[]][] = [
+  ['energia', ['energyKcal', 'energy_kcal']],
+  ['proteina', ['proteinG', 'protein_g']],
+  ['carboidrato', ['carbohydrateG', 'carbohydrate_g']],
+  ['gordura', ['fatG', 'fat_g']],
+  ['fibra', ['fiberG', 'fiber_g']],
+  ['agua', ['waterMl', 'water_ml', 'water']],
+]
 
 export function initialAssistantState(): PlanAssistantState {
   return { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [] }
@@ -95,4 +104,13 @@ export function canReviewPlan(state: PlanAssistantState): boolean {
 
 export function canPublishPlan(state: PlanAssistantState, status: string): boolean {
   return status === 'reviewed' && state.completedSteps.includes('review')
+}
+
+export function getPlanQualityIssues(state: PlanAssistantState, targets: PlanTargets): string[] {
+  const issues = requiredTargets
+    .filter(([, keys]) => keys.every(key => !Number.isFinite(targets[key]) || Number(targets[key]) <= 0))
+    .map(([label]) => `Informe meta de ${label}.`)
+  if (!canReviewPlan(state)) issues.push('Conclua as etapas obrigatorias do assistente.')
+  if (!state.priorityMicronutrients.length) issues.push('Informe micronutrientes prioritarios.')
+  return issues
 }

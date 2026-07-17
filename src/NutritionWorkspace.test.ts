@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canPublishPlan, canReviewPlan, clinicalPresets, completeAssistantStep, initialAssistantState, suggestMicronutrients } from './lib/planAssistant'
+import { canPublishPlan, canReviewPlan, clinicalPresets, completeAssistantStep, getPlanQualityIssues, initialAssistantState, suggestMicronutrients } from './lib/planAssistant'
 import { mapDraftRows } from './lib/planDrafts'
 
 describe('mapDraftRows', () => {
@@ -66,5 +66,15 @@ describe('plan assistant', () => {
 
   it.each(clinicalPresets)('sugere micronutrientes para preset %s', preset => {
     expect(suggestMicronutrients([preset]).length).toBeGreaterThan(0)
+  })
+
+  it('bloqueia qualidade sem agua e micronutrientes prioritarios', () => {
+    let state = initialAssistantState()
+    for (const step of ['objective', 'targets', 'meals', 'equivalents'] as const) state = completeAssistantStep(state, step)
+
+    expect(getPlanQualityIssues(state, { energyKcal: 1800, proteinG: 90, carbohydrateG: 180, fatG: 60, fiberG: 25 })).toEqual([
+      'Informe meta de agua.',
+      'Informe micronutrientes prioritarios.',
+    ])
   })
 })

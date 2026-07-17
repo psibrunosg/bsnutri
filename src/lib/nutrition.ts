@@ -20,6 +20,7 @@ export interface FoodPortion {
   name: string
   grams: number
   nutrientsPer100g: Nutrients
+  hasReviewedSubstitution?: boolean
 }
 
 export interface Meal {
