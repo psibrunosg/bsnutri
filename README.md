@@ -1,39 +1,51 @@
 # BSNutri
 
-Planejador e controlador de planos alimentares para profissionais, clínicas e pacientes. O piloto usa React, TypeScript, Vite, Supabase e GitHub Pages.
+Planejador e controlador de planos alimentares para profissionais, clinicas e pacientes.
+
+Stack atual:
+
+1. React
+2. TypeScript
+3. Vite
+4. Supabase
+5. GitHub Pages
 
 ## Requisitos
 
-- Node.js 22
-- npm
-- Supabase CLI
-- Docker Desktop apenas para executar a stack e os testes SQL localmente
+1. Node.js 22
+2. npm
+3. Supabase CLI
+4. Docker Desktop apenas para stack local e testes SQL
 
-## Configuração local
+## Configuracao local
 
 ```bash
 npm ci
 copy .env.example .env.local
 ```
 
-Preencha `.env.local` com os dados públicos de **Project Settings > API** no Supabase:
+Preencha `.env.local` com os dados publicos de **Project Settings > API** no Supabase:
 
 ```env
 VITE_SUPABASE_URL=https://SEU_PROJECT_REF.supabase.co
 VITE_SUPABASE_ANON_KEY=SUA_CHAVE_ANON_OU_PUBLISHABLE
 ```
 
-Nunca coloque `service_role`, senha do banco, token pessoal ou dados reais de pacientes em arquivos `VITE_*`, commits, fixtures ou screenshots. Variáveis `VITE_*` são incorporadas ao frontend e ficam públicas.
+Nunca coloque `service_role`, senha do banco, token pessoal ou dados reais de pacientes em variaveis `VITE_*`, commits, fixtures ou screenshots.
 
-Inicie a aplicação:
+Para rodar localmente:
 
 ```bash
 npm run dev
 ```
 
-## Supabase CLI
+## Supabase
 
-O projeto remoto atual tem o ref `qjclholskxmtxqqentuz`.
+Projeto remoto atual:
+
+1. ref: `qjclholskxmtxqqentuz`
+
+Fluxo normal de migrations:
 
 ```bash
 supabase login
@@ -43,9 +55,14 @@ supabase db push --dry-run
 supabase db push
 ```
 
-Use `db push --dry-run` antes de aplicar migrations remotas. A autenticação do CLI fica fora do repositório. Não compartilhe o access token.
+Regras:
 
-Para trabalhar localmente, com Docker Desktop ativo:
+1. usar `supabase db push --dry-run` antes de aplicar no remoto
+2. nao reescrever migrations ja aplicadas
+3. usar apenas dados sinteticos
+4. nao compartilhar access token, service role ou senha do banco
+
+Stack local com Docker:
 
 ```bash
 supabase start
@@ -54,37 +71,97 @@ supabase test db
 supabase stop
 ```
 
-`supabase db reset` apaga somente o banco local. Não execute comandos destrutivos contra o projeto remoto.
+`supabase db reset` apaga somente o banco local.
 
-## Validação
+## Validacao local
+
+Rodar sempre antes de publicar:
 
 ```bash
 npm run lint
 npm test
 npm run build
+```
+
+Se houver mudanca de banco ou policy, rodar tambem:
+
+```bash
 supabase test db
 ```
 
-Os testes SQL em `supabase/tests` verificam o isolamento entre clínicas e as permissões dos papéis. Consulte também [docs/rls-test-matrix.md](docs/rls-test-matrix.md).
-
 ## GitHub Pages
 
-O workflow `.github/workflows/deploy.yml` valida e publica a branch `main`. No GitHub, configure **Settings > Pages > Source** como **GitHub Actions**.
+O deploy usa `.github/workflows/deploy.yml`.
 
-As variáveis do Supabase precisam existir durante o build. Cadastre em **Settings > Secrets and variables > Actions > Secrets**, pois o workflow usa `secrets`:
+Em push para `main`, o workflow executa:
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+1. `npm ci`
+2. `npm run lint`
+3. `npm test`
+4. `npm run build`
+5. upload de `dist`
+6. deploy no GitHub Pages
 
-Quando o workflow passar a consumi-las, mantenha somente valores públicos nessas variáveis. GitHub Pages hospeda arquivos estáticos: autenticação, autorização e isolamento de dados dependem do Supabase RLS, nunca de esconder controles na interface.
+Secrets publicos esperados no GitHub Actions:
 
-No Supabase, mantenha `https://psibrunosg.github.io/bsnutri/` como **Site URL** e também em **Redirect URLs**. Isso permite que os links de confirmação e de recuperação de senha retornem ao aplicativo.
+1. `VITE_SUPABASE_URL`
+2. `VITE_SUPABASE_ANON_KEY`
 
-## Fluxo de contribuição
+No Supabase, manter:
 
-1. Crie uma branch curta.
-2. Adicione migrations incrementais. Não reescreva migrations já aplicadas.
-3. Execute lint, testes, build e testes SQL.
-4. Use apenas dados sintéticos.
-5. Abra o pull request e aguarde o workflow.
+1. `https://psibrunosg.github.io/bsnutri/` em `Site URL`
+2. `https://psibrunosg.github.io/bsnutri/` em `Redirect URLs`
 
+## Fechamento do MVP
+
+O MVP so pode ser chamado de concluido quando estas 3 jornadas estiverem provadas no deploy publicado:
+
+1. `profissional` entra, acessa paciente e opera plano sem erro bloqueante
+2. `paciente` entra e consome somente conteudo publicado
+3. `recepcao` entra e opera agenda sem navegar em dados clinicos
+
+### Ordem final de validacao
+
+1. rodar `npm run lint`
+2. rodar `npm test`
+3. rodar `npm run build`
+4. publicar a versao atual em `main`
+5. esperar os jobs `validate` e `deploy` verdes
+6. abrir `https://psibrunosg.github.io/bsnutri/`
+7. repetir o smoke com:
+   `mvp2.profissional@teste.com`
+   `mvp2.recepcao@teste.com`
+   `mvp2.paciente@teste.com`
+
+### Evidencia minima para aprovar
+
+1. `profissional` entra e ve dashboard ou paciente sem erro bloqueante
+2. `recepcao` cai direto em agenda e sem menu clinico
+3. `paciente` entra, ve plano vigente e nao chama `claim_patient_access` sem necessidade
+4. o deploy publicado reflete o frontend local mais recente
+5. `lint`, `test` e `build` continuam verdes
+6. as suites SQL centrais continuam validadas
+
+### Estado real em sexta-feira, 17 de julho de 2026
+
+1. `profissional`: provado no deploy publicado
+2. `paciente`: parcial
+3. `recepcao`: pendente no deploy publicado
+4. `lint`, `test` e `build`: provados localmente
+5. suites SQL centrais: provadas
+
+### Artefatos de apoio
+
+1. `docs/MVP_INDEX.md`
+2. `docs/MVP_AUDITORIA_STATUS.md`
+3. `docs/MVP_CHECKLIST_FINAL.md`
+4. `work/MVP_FECHAMENTO_FINAL.md`
+5. `G:\Meu Drive\0.Jarvis\11_handoffs\bsnutri_17_07_2026_0925.md`
+
+## Fluxo de contribuicao
+
+1. criar branch curta
+2. adicionar migrations incrementais
+3. validar lint, testes, build e testes SQL quando aplicavel
+4. publicar somente dados sinteticos
+5. abrir pull request ou publicar em `main` quando o alvo for deploy do piloto

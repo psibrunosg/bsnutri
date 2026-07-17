@@ -3,6 +3,8 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(15);
 
+set local role postgres;
+
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at) values
   ('11000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','nutri-a-publicacao@teste.invalid','',now(),now(),now()),
   ('11000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','recepcao-a-publicacao@teste.invalid','',now(),now(),now()),
@@ -17,13 +19,17 @@ insert into public.profiles (id, full_name) values
   ('11000000-0000-0000-0000-000000000004','Paciente Vinculado A'),
   ('11000000-0000-0000-0000-000000000005','Paciente Não Vinculado');
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub','11000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
 insert into public.organizations (id,name,slug,created_by) values
-  ('21000000-0000-0000-0000-000000000001','Clínica Publicação A','clinica-publicacao-a','11000000-0000-0000-0000-000000000001'),
+  ('21000000-0000-0000-0000-000000000001','Clínica Publicação A','clinica-publicacao-a','11000000-0000-0000-0000-000000000001');
+select set_config('request.jwt.claim.sub','11000000-0000-0000-0000-000000000003',true);
+insert into public.organizations (id,name,slug,created_by) values
   ('21000000-0000-0000-0000-000000000002','Clínica Publicação B','clinica-publicacao-b','11000000-0000-0000-0000-000000000003');
+set local role postgres;
 insert into public.memberships (organization_id,user_id,role,status) values
-  ('21000000-0000-0000-0000-000000000001','11000000-0000-0000-0000-000000000001','nutritionist','active'),
-  ('21000000-0000-0000-0000-000000000001','11000000-0000-0000-0000-000000000002','receptionist','active'),
-  ('21000000-0000-0000-0000-000000000002','11000000-0000-0000-0000-000000000003','nutritionist','active');
+  ('21000000-0000-0000-0000-000000000001','11000000-0000-0000-0000-000000000002','receptionist','active');
 
 insert into public.patients (id,organization_id,professional_id,anonymous_code,full_name,created_by,patient_user_id) values
   ('31000000-0000-0000-0000-000000000001','21000000-0000-0000-0000-000000000001','11000000-0000-0000-0000-000000000001','PUB-A01','Paciente Publicação A','11000000-0000-0000-0000-000000000001','11000000-0000-0000-0000-000000000004'),
@@ -46,6 +52,7 @@ insert into public.meal_items (id,organization_id,meal_id,position,description,q
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','11000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
 select lives_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":2000,"protein_g":100}'::jsonb)$$,'nutricionista revisa versão com metas');
 select lives_ok($$select public.publish_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001')$$,'nutricionista publica versão revisada');
 select ok((select locked_at is not null and published_at is not null and content_hash is not null from public.plan_versions where id='51000000-0000-0000-0000-000000000001'),'publicação bloqueia e assina a versão');

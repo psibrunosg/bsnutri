@@ -1,9 +1,9 @@
 begin;
 
+set local role postgres;
+
 create extension if not exists pgtap with schema extensions;
 select plan(3);
-
-set local role postgres;
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values ('13000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'bootstrap@teste.invalid', '', now(), now(), now());

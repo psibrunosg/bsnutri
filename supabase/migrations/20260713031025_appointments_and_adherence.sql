@@ -62,7 +62,21 @@ create index adherence_alerts_org_status_idx on public.adherence_alerts(organiza
 
 create or replace function private.can_manage_patient_appointments(target_patient_id uuid)
 returns boolean language sql stable security definer set search_path='' as $$
- select exists(select 1 from public.patients p where p.id=target_patient_id and (p.patient_user_id=(select auth.uid()) or exists(select 1 from public.patient_guardians g where g.patient_id=p.id and g.guardian_user_id=(select auth.uid()) and g.can_manage_appointments)));
+ select exists(
+   select 1
+   from public.patients p
+   where p.id = target_patient_id
+     and (
+       p.patient_user_id = nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+       or exists (
+         select 1
+         from public.patient_guardians g
+         where g.patient_id = p.id
+           and g.guardian_user_id = nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+           and g.can_manage_appointments
+       )
+     )
+ );
 $$;
 revoke all on function private.can_manage_patient_appointments(uuid) from public,anon;
 grant execute on function private.can_manage_patient_appointments(uuid) to authenticated;
@@ -113,7 +127,7 @@ create policy alerts_select_clinical on public.adherence_alerts for select to au
 create policy alerts_update_clinical on public.adherence_alerts for update to authenticated using(private.has_organization_role(organization_id,array['owner','admin','nutritionist','student']::public.organization_role[])) with check(private.has_organization_role(organization_id,array['owner','admin','nutritionist','student']::public.organization_role[]));
 
 create or replace function public.review_appointment(target_id uuid,target_status public.appointment_status,target_staff_note text default null,target_meeting_url text default null)
-returns void language plpgsql security invoker set search_path='' as $$
+returns void language plpgsql security definer set search_path='' as $$
 declare target_org uuid;
 begin
  perform set_config('bsnutri.appointment_rpc','on',true); select organization_id into target_org from public.appointments where id=target_id for update;
@@ -123,7 +137,7 @@ begin
  insert into public.audit_events(organization_id,actor_id,action,entity_type,entity_id,metadata) values(target_org,auth.uid(),'appointment_'||target_status::text,'appointment',target_id,'{}');
 end; $$;
 create or replace function public.cancel_appointment(target_id uuid,reason text)
-returns void language plpgsql security invoker set search_path='' as $$
+returns void language plpgsql security definer set search_path='' as $$
 declare row_data public.appointments%rowtype;
 begin
  perform set_config('bsnutri.appointment_rpc','on',true); select * into row_data from public.appointments where id=target_id for update;
@@ -133,7 +147,7 @@ begin
  insert into public.audit_events(organization_id,actor_id,action,entity_type,entity_id,metadata) values(row_data.organization_id,auth.uid(),'appointment_cancelled','appointment',target_id,jsonb_build_object('reason',reason));
 end; $$;
 create or replace function public.update_alert_status(target_id uuid,target_status public.alert_status)
-returns void language plpgsql security invoker set search_path='' as $$
+returns void language plpgsql security definer set search_path='' as $$
 declare target_org uuid;
 begin
  select organization_id into target_org from public.adherence_alerts where id=target_id;
