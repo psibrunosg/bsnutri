@@ -10,6 +10,7 @@ type Patient = { id: string; anonymous_code: string; full_name: string }
 type NutrientRow = { id: string; code: string; name: string; unit: string }
 type FoodRow = { id: string; name: string; preparation_state: string; food_nutrient_values: { amount_per_100g: number; nutrients: NutrientRow | null }[] }
 type CatalogFood = { id: string; name: string; preparationState: string; nutrients: Nutrients }
+type EditorMode = 'quick' | 'technical'
 
 const aliases: Record<NutrientKey, string[]> = { energyKcal: ['energy_kcal','energy','kcal'], proteinG: ['protein_g','protein'], carbohydrateG: ['carbohydrate_g','carbohydrate','carbs'], fatG: ['fat_g','fat','lipids'], fiberG: ['fiber_g','fiber'], sodiumMg: ['sodium_mg','sodium'], calciumMg: ['calcium_mg','calcium'], ironMg: ['iron_mg','iron'], potassiumMg: ['potassium_mg','potassium'], vitaminCMg: ['vitamin_c_mg','vitamin_c'] }
 const keys: NutrientKey[] = ['energyKcal','proteinG','carbohydrateG','fatG']
@@ -30,6 +31,7 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
   const [loadedVersion,setLoadedVersion]=useState(''),[planStatus,setPlanStatus]=useState('draft'),[locked,setLocked]=useState(false)
   const [targets,setTargets]=useState<Record<string,number>>({energyKcal:0,proteinG:0,carbohydrateG:0,fatG:0,fiberG:0})
   const [assistant,setAssistant]=useState<PlanAssistantState>(initialAssistantState())
+  const [editorMode,setEditorMode]=useState<EditorMode>('quick')
   const [patientId,setPatientId]=useState(''),[title,setTitle]=useState('Plano alimentar'),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
   const meals=days[activeDay]?.meals??[]
   const setMeals:React.Dispatch<React.SetStateAction<Meal[]>>=update=>setDays(all=>all.map((day,index)=>index===activeDay?{...day,meals:typeof update==='function'?update(day.meals):update}:day))
@@ -71,15 +73,25 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
     {message&&<div className="notice" role="status">{message}</div>}
     {tab==='catalog'?<Catalog foods={foods} keys={keys} labels={labels} busy={busy} addFood={addFood}/>:<div className="plans-layout">
       <aside className="draft-panel panel"><header><div><h2>Planos</h2><small>{drafts.length} plano(s)</small></div><button aria-label="Atualizar planos" onClick={()=>void loadDrafts()}><RefreshCw/></button></header>{loadingDrafts?<p className="muted">Carregando planos...</p>:<div className="draft-list">{drafts.map(draft=><button className={loadedDraft===draft.id?'active':''} key={draft.id} onClick={()=>openDraft(draft)}><span><strong>{draft.title}</strong><small>{patients.find(p=>p.id===draft.patientId)?.full_name??'Paciente'} · {draft.days.length} dia(s) · v{draft.version}</small><time><b className={`plan-status ${draft.status}`}>{draft.status==='published'?'Publicado':draft.status==='reviewed'?'Revisado':'Rascunho'}</b> · {new Date(draft.updatedAt).toLocaleDateString('pt-BR')}</time></span><ChevronRight/></button>)}{!drafts.length&&<p className="muted">Nenhum plano salvo.</p>}</div>}</aside>
-      <div className="plan-editor"><PlanAssistant state={assistant} setState={setAssistant} locked={locked}/><section className="panel plan-basics"><label>Paciente<select value={patientId} disabled={locked} onChange={e=>setPatientId(e.target.value)}><option value="">Selecione</option>{patients.map(p=><option key={p.id} value={p.id}>{p.anonymous_code} · {p.full_name}</option>)}</select></label><label>Título<input value={title} readOnly={locked} onChange={e=>setTitle(e.target.value)}/></label></section>
-        <section className="panel target-panel"><header><div><h2>Metas nutricionais</h2><small>Status: {planStatus==='published'?'Publicado':planStatus==='reviewed'?'Revisado':'Rascunho'}</small></div></header><div>{[['energyKcal','Energia (kcal)'],['proteinG','Proteína (g)'],['carbohydrateG','Carboidrato (g)'],['fatG','Gordura (g)'],['fiberG','Fibra (g)']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="0.1" value={targets[key]??0} disabled={locked} onChange={e=>setTargets(all=>({...all,[key]:Number(e.target.value)}))}/></label>)}</div></section>
+      <div className={`plan-editor ${editorMode}`}><EditorModeSwitch mode={editorMode} setMode={setEditorMode}/><PlanAssistant state={assistant} setState={setAssistant} locked={locked}/><section className="panel plan-basics"><label>Paciente<select value={patientId} disabled={locked} onChange={e=>setPatientId(e.target.value)}><option value="">Selecione</option>{patients.map(p=><option key={p.id} value={p.id}>{p.anonymous_code} · {p.full_name}</option>)}</select></label><label>Título<input value={title} readOnly={locked} onChange={e=>setTitle(e.target.value)}/></label></section>
+        <section className="panel target-panel" aria-hidden={editorMode==='quick'}><header><div><h2>Metas nutricionais</h2><small>Status: {planStatus==='published'?'Publicado':planStatus==='reviewed'?'Revisado':'Rascunho'}</small></div></header><div>{[['energyKcal','Energia (kcal)'],['proteinG','Proteína (g)'],['carbohydrateG','Carboidrato (g)'],['fatG','Gordura (g)'],['fiberG','Fibra (g)']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="0.1" value={targets[key]??0} disabled={locked} onChange={e=>setTargets(all=>({...all,[key]:Number(e.target.value)}))}/></label>)}</div></section>
         <div className="day-tabs" role="tablist" aria-label="Dias do plano">{days.map((day,index)=><button role="tab" aria-selected={activeDay===index} className={activeDay===index?'active':''} key={day.id} onClick={()=>setActiveDay(index)}>{day.label}</button>)}{!locked&&<button onClick={()=>{setDays(all=>[...all,{...initialDay(),label:`Dia ${all.length+1}`}]);setActiveDay(days.length)}}><Plus/> Dia</button>}</div>
-        <section className="live-totals">{keys.map(k=><div key={k}><small>{labels[k]}</small><strong>{totals[k].toLocaleString('pt-BR')} {k==='energyKcal'?'kcal':'g'}</strong></div>)}</section>
+        <section className="live-totals" aria-hidden={editorMode==='quick'}>{keys.map(k=><div key={k}><small>{labels[k]}</small><strong>{totals[k].toLocaleString('pt-BR')} {k==='energyKcal'?'kcal':'g'}</strong></div>)}</section>
+        <TechnicalChecklist assistant={assistant} canReview={canReviewPlan(assistant)} hidden={editorMode==='quick'}/>
         {meals.map((meal,index)=><MealCard key={meal.id} meal={meal} index={index} foods={foods} setMeals={setMeals} addItem={addItem} readOnly={locked}/>)}
         {!locked&&<div className="editor-actions"><button className="secondary" onClick={()=>setMeals(m=>[...m,{id:crypto.randomUUID(),name:`Refeição ${m.length+1}`,items:[]}])}><Plus/>Adicionar refeição</button><span className="publication-actions"><button className="secondary" disabled={busy||!loadedDraft||!canReviewPlan(assistant)} onClick={()=>void review()}>Marcar como revisado</button><button className="primary" disabled={busy||!canPublishPlan(assistant,planStatus)} onClick={()=>void publish()}>Publicar</button><button className="primary" disabled={busy} onClick={()=>void save()}>{busy?'Salvando...':loadedDraft?'Salvar como novo rascunho':'Salvar rascunho'}</button></span></div>}
       </div>
     </div>}
   </section>
+}
+
+function EditorModeSwitch({mode,setMode}:{mode:EditorMode;setMode:(mode:EditorMode)=>void}){
+  return <div className="editor-mode panel" role="tablist" aria-label="Modo do editor"><button role="tab" aria-selected={mode==='quick'} className={mode==='quick'?'active':''} onClick={()=>setMode('quick')}>Consulta rapida</button><button role="tab" aria-selected={mode==='technical'} className={mode==='technical'?'active':''} onClick={()=>setMode('technical')}>Tecnico</button></div>
+}
+
+function TechnicalChecklist({assistant,canReview,hidden}:{assistant:PlanAssistantState;canReview:boolean;hidden:boolean}){
+  const pending=assistantSteps.filter(step=>step!=='publish'&&!assistant.completedSteps.includes(step))
+  return <section className="panel technical-checklist" aria-hidden={hidden}><h2>Pendencias tecnicas</h2>{canReview?<p className="muted">Assistente pronto para revisao.</p>:<ul>{pending.map(step=><li key={step}>{assistantLabels[step]}</li>)}</ul>}</section>
 }
 
 function PlanAssistant({state,setState,locked}:{state:PlanAssistantState;setState:React.Dispatch<React.SetStateAction<PlanAssistantState>>;locked:boolean}){

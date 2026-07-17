@@ -4,10 +4,17 @@
 
 **Blocked by:** 01 - Assistente obrigatório do editor.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] A alternância muda apenas a densidade da tela, não o rascunho salvo.
-- [ ] O modo consulta rápida permite montar refeições com poucos cliques.
-- [ ] O modo técnico mostra metas, pendências e ações de revisão/publicação.
-- [ ] A interface funciona em desktop e largura móvel.
-- [ ] Há teste de interface cobrindo alternância sem perda de dados.
+- [x] A alternância muda apenas a densidade da tela, não o rascunho salvo.
+- [x] O modo consulta rápida permite montar refeições com poucos cliques.
+- [x] O modo técnico mostra metas, pendências e ações de revisão/publicação.
+- [x] A interface funciona em desktop e largura móvel.
+- [x] Há teste de interface cobrindo alternância sem perda de dados.
+
+**Implementation notes**
+
+- Adicionado seletor de densidade `Consulta rapida` / `Tecnico` no editor de plano.
+- O modo rapido preserva o mesmo rascunho e prioriza montagem de refeicoes e salvamento.
+- O modo tecnico expõe metas, calculos, pendencias do assistente e acoes de revisao/publicacao.
+- Cobertura adicionada em `src/NutritionWorkspace.ui.test.tsx`.
