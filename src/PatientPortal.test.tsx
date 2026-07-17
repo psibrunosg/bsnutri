@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PatientPortal } from './PatientPortal'
 
@@ -57,7 +57,7 @@ describe('PatientPortal visibility controls', () => {
   afterEach(() => cleanup())
 
   beforeEach(() => {
-    rpcMock.mockResolvedValue({ data: [], error: null })
+    rpcMock.mockResolvedValue({ data: [{ status: 'missing', can_upload_photos: false }], error: null })
   })
 
   it.each([
@@ -71,5 +71,16 @@ describe('PatientPortal visibility controls', () => {
     await screen.findByText('Plano A')
 
     expect(screen.queryAllByText('130 kcal').length).toBe((showsPlanTotal ? 1 : 0) + (showsMealTotal ? 1 : 0))
+  })
+
+  it('desabilita foto quando Drive nao esta conectado e mantem diario textual', async () => {
+    fromMock.mockImplementation((table: string) => queryResult(table === 'plans' ? plan({}) : []))
+
+    render(<PatientPortal patient={patient}/>)
+    await screen.findByText('Plano A')
+    fireEvent.click(screen.getByRole('button', { name: /Registrar como foi/i }))
+
+    expect(screen.getByLabelText(/Foto do diario/i)).toBeDisabled()
+    expect(screen.getByLabelText(/Nota/i)).toBeEnabled()
   })
 })

@@ -64,6 +64,7 @@ type ShoppingItem = {
   total_grams: number;
   occurrences: number;
 };
+type DriveStatus = { status: "missing" | "connected"; can_upload_photos: boolean };
 type NutritionSummary = { energyKcal: number; proteinG: number; carbohydrateG: number; fatG: number };
 
 function itemAmount(item: Item, code: keyof NutritionSummary, snapshotCode: string) {
@@ -104,12 +105,13 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
   const [plans, setPlans] = useState<Plan[]>([]),
     [appointments, setAppointments] = useState<Appointment[]>([]),
     [requests, setRequests] = useState<SwapRequest[]>([]),
+    [drive, setDrive] = useState<DriveStatus>({ status: "missing", can_upload_photos: false }),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [p, a, r] = await Promise.all([
+    const [p, a, r, d] = await Promise.all([
       supabase
         .from("plans")
         .select(
@@ -128,14 +130,16 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
         .select("id,substitution_id,status,professional_note")
         .eq("patient_id", patient.id)
         .order("created_at", { ascending: false }),
+      supabase.rpc("get_patient_drive_status", { target_patient_id: patient.id }),
     ]);
-    const first = p.error ?? a.error ?? r.error;
+    const first = p.error ?? a.error ?? r.error ?? d.error;
     if (first)
       setError(`Não foi possível carregar seus dados: ${first.message}`);
     else {
       setPlans((p.data ?? []) as unknown as Plan[]);
       setAppointments(a.data ?? []);
       setRequests(r.data ?? []);
+      setDrive(((d.data as DriveStatus[] | null)?.[0]) ?? { status: "missing", can_upload_photos: false });
     }
     setLoading(false);
   }, [patient.id]);
@@ -256,6 +260,7 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
               plan={plan}
               patient={patient}
               requests={requests}
+              drive={drive}
               reload={load}
             />
           ))}
@@ -353,11 +358,13 @@ function PlanCard({
   plan,
   patient,
   requests,
+  drive,
   reload,
 }: {
   plan: Plan;
   patient: PatientAccess;
   requests: SwapRequest[];
+  drive: DriveStatus;
   reload: () => Promise<void>;
 }) {
   const version = plan.plan_versions;
@@ -424,6 +431,7 @@ function PlanCard({
                       meal={meal}
                       versionId={version.id}
                       patient={patient}
+                      drive={drive}
                     />
                   </div>
                 </article>
@@ -525,10 +533,12 @@ function MealCheckin({
   meal,
   versionId,
   patient,
+  drive,
 }: {
   meal: Meal;
   versionId: string;
   patient: PatientAccess;
+  drive: DriveStatus;
 }) {
   const [message, setMessage] = useState(""),
     [open, setOpen] = useState(false);
@@ -616,6 +626,11 @@ function MealCheckin({
           <label className="check-option">
             <input name="reaction" type="checkbox" /> Suspeita de reação ou
             alergia
+          </label>
+          <label>
+            Foto do diario
+            <input name="photo" type="file" accept="image/*" disabled={!drive.can_upload_photos} />
+            {!drive.can_upload_photos && <small>Fotos indisponiveis ate a clinica conectar o Google Drive.</small>}
           </label>
           <label>
             Sintomas
