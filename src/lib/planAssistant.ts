@@ -1,11 +1,15 @@
 export const assistantSteps = ['objective', 'targets', 'meals', 'equivalents', 'review', 'publish'] as const
 
 export type PlanAssistantStep = (typeof assistantSteps)[number]
+export const clinicalPresets = ['weight_loss', 'hypertrophy', 'insulin_resistance', 'hypertension', 'vegetarian', 'child_teen'] as const
+export type ClinicalPreset = (typeof clinicalPresets)[number]
 
 export type PlanAssistantState = {
   currentStep: PlanAssistantStep
   completedSteps: PlanAssistantStep[]
   objective: string
+  clinicalPresets: ClinicalPreset[]
+  priorityMicronutrients: string[]
 }
 
 export const assistantLabels: Record<PlanAssistantStep, string> = {
@@ -17,10 +21,32 @@ export const assistantLabels: Record<PlanAssistantStep, string> = {
   publish: 'Publicação',
 }
 
+export const clinicalPresetLabels: Record<ClinicalPreset, string> = {
+  weight_loss: 'Emagrecimento',
+  hypertrophy: 'Hipertrofia',
+  insulin_resistance: 'Resistencia a insulina',
+  hypertension: 'Hipertensao',
+  vegetarian: 'Vegetariano',
+  child_teen: 'Crianca/adolescente',
+}
+
+const presetMicronutrients: Record<ClinicalPreset, string[]> = {
+  weight_loss: ['Fibra', 'Potassio', 'Vitamina C'],
+  hypertrophy: ['Ferro', 'Calcio', 'Vitamina C'],
+  insulin_resistance: ['Fibra', 'Magnesio', 'Potassio'],
+  hypertension: ['Sodio', 'Potassio', 'Calcio'],
+  vegetarian: ['Ferro', 'Calcio', 'Vitamina B12'],
+  child_teen: ['Calcio', 'Ferro', 'Vitamina D'],
+}
+
 const requiredBeforeReview: PlanAssistantStep[] = ['objective', 'targets', 'meals', 'equivalents']
 
 export function initialAssistantState(): PlanAssistantState {
-  return { currentStep: 'objective', completedSteps: [], objective: '' }
+  return { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [] }
+}
+
+export function suggestMicronutrients(presets: ClinicalPreset[]): string[] {
+  return Array.from(new Set(presets.flatMap(preset => presetMicronutrients[preset])))
 }
 
 export function sanitizeAssistantState(value: unknown): PlanAssistantState {
@@ -36,6 +62,23 @@ export function sanitizeAssistantState(value: unknown): PlanAssistantState {
     currentStep,
     completedSteps: Array.from(new Set(completed)),
     objective: typeof source.objective === 'string' ? source.objective : '',
+    clinicalPresets: Array.isArray(source.clinicalPresets)
+      ? source.clinicalPresets.filter((preset): preset is ClinicalPreset => clinicalPresets.includes(preset as ClinicalPreset))
+      : [],
+    priorityMicronutrients: Array.isArray(source.priorityMicronutrients)
+      ? source.priorityMicronutrients.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim())
+      : [],
+  }
+}
+
+export function toggleClinicalPreset(state: PlanAssistantState, preset: ClinicalPreset): PlanAssistantState {
+  const clinicalPresets = state.clinicalPresets.includes(preset)
+    ? state.clinicalPresets.filter(item => item !== preset)
+    : [...state.clinicalPresets, preset]
+  return {
+    ...state,
+    clinicalPresets,
+    priorityMicronutrients: Array.from(new Set([...state.priorityMicronutrients, ...suggestMicronutrients(clinicalPresets)])),
   }
 }
 

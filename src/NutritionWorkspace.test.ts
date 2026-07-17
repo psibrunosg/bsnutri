@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canPublishPlan, canReviewPlan, completeAssistantStep, initialAssistantState } from './lib/planAssistant'
+import { canPublishPlan, canReviewPlan, clinicalPresets, completeAssistantStep, initialAssistantState, suggestMicronutrients } from './lib/planAssistant'
 import { mapDraftRows } from './lib/planDrafts'
 
 describe('mapDraftRows', () => {
@@ -33,7 +33,7 @@ describe('mapDraftRows', () => {
       plan_versions: [{
         id: 'v1',
         version_no: 1,
-        assistant_state: { currentStep: 'meals', completedSteps: ['objective', 'targets'], objective: 'Hipertrofia' },
+        assistant_state: { currentStep: 'meals', completedSteps: ['objective', 'targets'], objective: 'Hipertrofia', clinicalPresets: ['hypertrophy'], priorityMicronutrients: ['Ferro'] },
         plan_days: [],
       }],
     }])
@@ -42,6 +42,8 @@ describe('mapDraftRows', () => {
       currentStep: 'meals',
       completedSteps: ['objective', 'targets'],
       objective: 'Hipertrofia',
+      clinicalPresets: ['hypertrophy'],
+      priorityMicronutrients: ['Ferro'],
     })
   })
 })
@@ -60,5 +62,9 @@ describe('plan assistant', () => {
 
     state = completeAssistantStep(state, 'review')
     expect(canPublishPlan(state, 'reviewed')).toBe(true)
+  })
+
+  it.each(clinicalPresets)('sugere micronutrientes para preset %s', preset => {
+    expect(suggestMicronutrients([preset]).length).toBeGreaterThan(0)
   })
 })
