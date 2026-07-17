@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import { sanitizePlanVisibility, type PlanVisibility } from "./lib/planAssistant";
+import { createDriveClient, diaryPhotoFileName } from "./lib/driveClient";
 
 type PatientAccess = {
   id: string;
@@ -65,6 +66,7 @@ type ShoppingItem = {
   occurrences: number;
 };
 type DriveStatus = { status: "missing" | "connected"; can_upload_photos: boolean };
+const driveClient = createDriveClient();
 type NutritionSummary = { energyKcal: number; proteinG: number; carbohydrateG: number; fatG: number };
 
 function itemAmount(item: Item, code: keyof NutritionSummary, snapshotCode: string) {
@@ -545,14 +547,17 @@ function MealCheckin({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    const d = new FormData(event.currentTarget),
+    const form = event.currentTarget,
+      d = new FormData(form),
+      photoInput = form.elements.namedItem("photo") as HTMLInputElement | null,
+      photo = photoInput?.files?.[0],
       { data } = await supabase.auth.getSession();
     if (!data.session) return setMessage("Sessão expirada.");
     const number = (key: string) => {
       const value = String(d.get(key));
       return value === "" ? null : Number(value);
     };
-    const { error } = await supabase
+    const { data: checkin, error } = await supabase
       .from("meal_checkins")
       .upsert(
         {
@@ -573,7 +578,19 @@ function MealCheckin({
           created_by: data.session.user.id,
         },
         { onConflict: "patient_id,meal_id,occurred_on" },
-      );
+      )
+      .select("id")
+      .single();
+    if (!error && drive.can_upload_photos && photo && photo.size > 0 && checkin?.id) {
+      const uploadInput = { organizationId: patient.organization_id, professionalId: patient.professional_id, patientId: patient.id, mealId: meal.id, mealLabel: meal.label, occurredOn: String(d.get("date")), checkinId: checkin.id, file: photo };
+      try {
+        const uploaded = await driveClient.uploadDiaryPhoto(uploadInput);
+        const photoInsert = await supabase.from("meal_checkin_photos").insert({ organization_id: patient.organization_id, patient_id: patient.id, meal_checkin_id: checkin.id, meal_id: meal.id, occurred_on: String(d.get("date")), drive_file_id: uploaded.fileId, drive_web_url: uploaded.webViewLink ?? null, file_name: diaryPhotoFileName(uploadInput), created_by: data.session.user.id });
+        if (photoInsert.error) return setMessage(photoInsert.error.message);
+      } catch (uploadError) {
+        return setMessage(uploadError instanceof Error ? uploadError.message : "Falha ao enviar foto para o Drive");
+      }
+    }
     setMessage(error?.message ?? "Check-in salvo.");
     if (!error) setOpen(false);
   }

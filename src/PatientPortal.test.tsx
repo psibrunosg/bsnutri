@@ -1,15 +1,21 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PatientPortal } from './PatientPortal'
-
-const { fromMock, rpcMock } = vi.hoisted(() => ({ fromMock: vi.fn(), rpcMock: vi.fn() }))
+const { fromMock, rpcMock, uploadMock } = vi.hoisted(() => ({ fromMock: vi.fn(), rpcMock: vi.fn(), uploadMock: vi.fn() }))
 
 vi.mock('./lib/supabase', () => ({
   supabase: {
     from: fromMock,
     rpc: rpcMock,
+    auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'patient-user-1' } } } }) },
   },
 }))
+
+vi.mock('./lib/driveClient', async () => {
+  const actual = await vi.importActual<typeof import('./lib/driveClient')>('./lib/driveClient')
+  return { ...actual, createDriveClient: () => ({ uploadDiaryPhoto: uploadMock }) }
+})
+
+import { PatientPortal } from './PatientPortal'
 
 function queryResult(data: unknown[] = []) {
   return {
@@ -17,6 +23,15 @@ function queryResult(data: unknown[] = []) {
     eq: vi.fn().mockReturnThis(),
     in: vi.fn().mockReturnThis(),
     order: vi.fn().mockResolvedValue({ data, error: null }),
+  }
+}
+
+function mutationResult(data: unknown = null) {
+  return {
+    upsert: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockResolvedValue({ data, error: null }),
+    select: vi.fn().mockReturnThis(),
+    single: vi.fn().mockResolvedValue({ data, error: null }),
   }
 }
 
@@ -58,6 +73,7 @@ describe('PatientPortal visibility controls', () => {
 
   beforeEach(() => {
     rpcMock.mockResolvedValue({ data: [{ status: 'missing', can_upload_photos: false }], error: null })
+    uploadMock.mockResolvedValue({ fileId: 'drive-file-1', webViewLink: 'https://drive/foto' })
   })
 
   it.each([
@@ -82,5 +98,47 @@ describe('PatientPortal visibility controls', () => {
 
     expect(screen.getByLabelText(/Foto do diario/i)).toBeDisabled()
     expect(screen.getByLabelText(/Nota/i)).toBeEnabled()
+  })
+
+  it('envia foto para Drive conectado e salva metadados', async () => {
+    const photoInsert = vi.fn().mockResolvedValue({ data: null, error: null })
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'plans') return queryResult(plan({}))
+      if (table === 'meal_checkins') return mutationResult({ id: 'checkin-123456789' })
+      if (table === 'meal_checkin_photos') return { insert: photoInsert }
+      return queryResult([])
+    })
+    rpcMock.mockResolvedValue({ data: [{ status: 'connected', can_upload_photos: true }], error: null })
+
+    render(<PatientPortal patient={patient}/>)
+    await screen.findByText('Plano A')
+    fireEvent.click(screen.getByRole('button', { name: /Registrar como foi/i }))
+    fireEvent.change(screen.getByLabelText(/Foto do diario/i), { target: { files: [new File(['foto'], 'foto.jpg', { type: 'image/jpeg' })] } })
+    fireEvent.click(screen.getByRole('button', { name: /Salvar check-in/i }))
+
+    await screen.findByText('Check-in salvo.')
+    expect(uploadMock).toHaveBeenCalled()
+    expect(photoInsert).toHaveBeenCalledWith(expect.objectContaining({ drive_file_id: 'drive-file-1', meal_checkin_id: 'checkin-123456789', created_by: 'patient-user-1' }))
+  })
+
+  it('nao cria metadado quando upload no Drive falha', async () => {
+    const photoInsert = vi.fn().mockResolvedValue({ data: null, error: null })
+    uploadMock.mockRejectedValueOnce(new Error('Drive fora'))
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'plans') return queryResult(plan({}))
+      if (table === 'meal_checkins') return mutationResult({ id: 'checkin-erro' })
+      if (table === 'meal_checkin_photos') return { insert: photoInsert }
+      return queryResult([])
+    })
+    rpcMock.mockResolvedValue({ data: [{ status: 'connected', can_upload_photos: true }], error: null })
+
+    render(<PatientPortal patient={patient}/>)
+    await screen.findByText('Plano A')
+    fireEvent.click(screen.getByRole('button', { name: /Registrar como foi/i }))
+    fireEvent.change(screen.getByLabelText(/Foto do diario/i), { target: { files: [new File(['foto'], 'foto.jpg', { type: 'image/jpeg' })] } })
+    fireEvent.click(screen.getByRole('button', { name: /Salvar check-in/i }))
+
+    await screen.findByText('Drive fora')
+    expect(photoInsert).not.toHaveBeenCalled()
   })
 })
