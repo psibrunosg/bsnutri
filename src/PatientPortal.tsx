@@ -573,6 +573,8 @@ function MealCheckin({
           energy: number("energy"),
           sleep_quality: number("sleep"),
           reaction_suspected: d.get("reaction") === "on",
+          symptom_intensity: number("symptomIntensity"),
+          help_requested: d.get("help") === "on",
           symptoms: String(d.get("symptoms")) || null,
           note: String(d.get("note")) || null,
           created_by: data.session.user.id,
@@ -652,6 +654,13 @@ function MealCheckin({
           <label>
             Sintomas
             <input name="symptoms" maxLength={1000} />
+          </label>
+          <label>
+            Intensidade do sintoma
+            <input name="symptomIntensity" type="number" min="0" max="10" placeholder="0-10" />
+          </label>
+          <label className="check-option">
+            <input name="help" type="checkbox" /> Preciso de ajuda
           </label>
           <label>
             Nota

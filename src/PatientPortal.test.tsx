@@ -72,6 +72,7 @@ describe('PatientPortal visibility controls', () => {
   afterEach(() => cleanup())
 
   beforeEach(() => {
+    vi.clearAllMocks()
     rpcMock.mockResolvedValue({ data: [{ status: 'missing', can_upload_photos: false }], error: null })
     uploadMock.mockResolvedValue({ fileId: 'drive-file-1', webViewLink: 'https://drive/foto' })
   })
@@ -140,5 +141,29 @@ describe('PatientPortal visibility controls', () => {
 
     await screen.findByText('Drive fora')
     expect(photoInsert).not.toHaveBeenCalled()
+  })
+
+  it('envia diario ampliado sem foto', async () => {
+    const upsert = vi.fn().mockReturnThis()
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'plans') return queryResult(plan({}))
+      if (table === 'meal_checkins') return { upsert, select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'checkin-texto' }, error: null }) }
+      return queryResult([])
+    })
+
+    render(<PatientPortal patient={patient}/>)
+    await screen.findByText('Plano A')
+    fireEvent.click(screen.getByRole('button', { name: /Registrar como foi/i }))
+    fireEvent.change(screen.getByLabelText(/Realiza/i), { target: { value: 'adapted' } })
+    fireEvent.change(screen.getByLabelText(/Fome antes/i), { target: { value: '8' } })
+    fireEvent.change(screen.getByLabelText(/Saciedade depois/i), { target: { value: '5' } })
+    fireEvent.change(screen.getByLabelText(/Sintomas/i), { target: { value: 'Azia' } })
+    fireEvent.change(screen.getByLabelText(/Intensidade do sintoma/i), { target: { value: '7' } })
+    fireEvent.click(screen.getByLabelText(/Preciso de ajuda/i))
+    fireEvent.click(screen.getByRole('button', { name: /Salvar check-in/i }))
+
+    await screen.findByText('Check-in salvo.')
+    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ state: 'adapted', hunger_before: 8, satiety_after: 5, symptoms: 'Azia', symptom_intensity: 7, help_requested: true }), { onConflict: 'patient_id,meal_id,occurred_on' })
+    expect(uploadMock).not.toHaveBeenCalled()
   })
 })
