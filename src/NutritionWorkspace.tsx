@@ -4,9 +4,10 @@ import { ChevronLeft, ChevronRight, Copy, Heart, History, LayoutPanelLeft, Panel
 import { emptyNutrients, totalDay, type Meal, type NutrientKey, type Nutrients } from './lib/nutrition'
 import { catalogRenderSrc, describeCatalogServing, deriveCatalogNutrients, deriveServingNutrients, foodRenderSrc, matchesCatalogSearch, parseCatalogImport, type CatalogImportRow, type CatalogKind, type CatalogComponent } from './lib/catalog'
 import { builtInPlanModels, matchesModel, type ModelDimensions, type ModelRules } from './lib/planModels'
-import { assistantLabels, assistantSteps, canPublishPlan, canReviewPlan, clinicalPresetLabels, clinicalPresets, completeAssistantStep, getPlanQualityIssues, initialAssistantState, toggleClinicalPreset, type PlanAssistantState, type PlanAssistantStep } from './lib/planAssistant'
+import { assistantLabels, assistantSteps, canPublishPlan, canReviewPlan, clinicalPresetLabels, clinicalPresets, completeAssistantStep, getPlanQualityIssues, initialAssistantState, sanitizeAssistantState, toggleClinicalPreset, type PlanAssistantState, type PlanAssistantStep } from './lib/planAssistant'
 import { supabase } from './lib/supabase'
 import { mapDraftRows, type DraftSummary, type EditorDay, type PlanRow } from './lib/planDrafts'
+import { getRangeIssues } from './lib/planRanges'
 
 type Patient = { id: string; anonymous_code: string; full_name: string }
 type NutrientRow = { id: string; code: string; name: string; unit: string }
@@ -51,6 +52,7 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
   const meals=days[activeDay]?.meals??[]
   const setMeals:React.Dispatch<React.SetStateAction<Meal[]>>=update=>setDays(all=>all.map((day,index)=>index===activeDay?{...day,meals:typeof update==='function'?update(day.meals):update}:day))
   const totals=useMemo(()=>totalDay(days[activeDay]?.meals??[]),[days,activeDay])
+  const rangeIssues=useMemo(()=>getRangeIssues(totals,assistant.targetRanges),[totals,assistant.targetRanges])
 
   const loadDrafts=useCallback(async()=>{
     setLoadingDrafts(true)
@@ -70,7 +72,7 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
   useEffect(()=>{if(!autosaveReady)return;localStorage.setItem(autosaveKey,JSON.stringify({patientId,title,days,activeDay,targets,assistant,editorMode,savedAt:new Date().toISOString()} satisfies LocalPlanDraft))},[autosaveReady,autosaveKey,patientId,title,days,activeDay,targets,assistant,editorMode])
 
   function openDraft(draft:DraftSummary){setPatientId(draft.patientId);setTitle(draft.title);setDays(draft.days.length?draft.days:[initialDay()]);setActiveDay(0);setLoadedDraft(draft.id);setLoadedVersion(draft.versionId);setPlanStatus(draft.status);setLocked(draft.locked);setAssistant(draft.assistantState);setTargets(current=>({...current,...draft.targets}));setConfirmSubstitutionWarning(false);setTab('plan');setMessage(draft.locked?'Plano publicado aberto em modo somente leitura.':`Plano aberto, versão ${draft.version}.`)}
-  function restoreLocalDraft(){if(!recoverableDraft)return;const restoredDays=recoverableDraft.days.length?recoverableDraft.days:[initialDay()];setPatientId(recoverableDraft.patientId);setTitle(recoverableDraft.title);setDays(restoredDays);setActiveDay(Math.min(recoverableDraft.activeDay,restoredDays.length-1));setTargets(recoverableDraft.targets);setAssistant(recoverableDraft.assistant);setEditorMode(recoverableDraft.editorMode);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setRecoverableDraft(null);setAutosaveReady(true);setTab('plan');setMessage('Rascunho local restaurado.')}
+  function restoreLocalDraft(){if(!recoverableDraft)return;const restoredDays=recoverableDraft.days.length?recoverableDraft.days:[initialDay()];setPatientId(recoverableDraft.patientId);setTitle(recoverableDraft.title);setDays(restoredDays);setActiveDay(Math.min(recoverableDraft.activeDay,restoredDays.length-1));setTargets(recoverableDraft.targets);setAssistant(sanitizeAssistantState(recoverableDraft.assistant));setEditorMode(recoverableDraft.editorMode);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setRecoverableDraft(null);setAutosaveReady(true);setTab('plan');setMessage('Rascunho local restaurado.')}
   function discardLocalDraft(){localStorage.removeItem(autosaveKey);setRecoverableDraft(null);setAutosaveReady(true);setMessage('Rascunho local descartado.')}
   function startBlankPlan(){setTitle('Plano alimentar');setDays([initialDay()]);setActiveDay(0);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setAssistant(initialAssistantState());setTargets({energyKcal:0,proteinG:0,carbohydrateG:0,fatG:0,fiberG:0,waterMl:0});setConfirmSubstitutionWarning(false);setTab('plan');setMessage('Novo plano em branco iniciado.')}
   function copyOpenDraft(){if(!loadedDraft)return setMessage('Abra um plano anterior para usar como base.');setTitle(`${title} copia`);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setConfirmSubstitutionWarning(false);setTab('plan');setMessage('Plano aberto copiado como base. Salve para criar um novo rascunho.')}
@@ -153,9 +155,9 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
       </main>
       <aside className="plan-analysis" aria-label="Análise nutricional">
         <button className="rail-toggle" aria-label={analysisCollapsed?'Expandir análise':'Recolher análise'} onClick={()=>setAnalysisCollapsed(value=>!value)}>{analysisCollapsed?<PanelRightClose/>:<ChevronRight/>}</button>
-        {!analysisCollapsed&&<><section className="panel target-panel" aria-hidden={editorMode==='quick'}><header><div><h2>Metas nutricionais</h2><small>Status: {planStatus==='published'?'Publicado':planStatus==='reviewed'?'Revisado':'Rascunho'}</small></div></header><div>{[['energyKcal','Energia (kcal)'],['proteinG','Proteína (g)'],['carbohydrateG','Carboidrato (g)'],['fatG','Gordura (g)'],['fiberG','Fibra (g)'],['waterMl','Água (ml)']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="0.1" value={targets[key]??0} disabled={locked} onChange={e=>setTargets(all=>({...all,[key]:Number(e.target.value)}))}/></label>)}</div></section>
+        {!analysisCollapsed&&<><section className="panel target-panel" aria-hidden={editorMode==='quick'}><header><div><h2>Metas nutricionais</h2><small>Status: {planStatus==='published'?'Publicado':planStatus==='reviewed'?'Revisado':'Rascunho'}</small></div></header><div>{[['energyKcal','Energia (kcal)'],['proteinG','Proteína (g)'],['carbohydrateG','Carboidrato (g)'],['fatG','Gordura (g)'],['fiberG','Fibra (g)'],['waterMl','Água (ml)']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="0.1" value={targets[key]??0} disabled={locked} onChange={e=>setTargets(all=>({...all,[key]:Number(e.target.value)}))}/></label>)}</div><TargetRangeInputs state={assistant} setState={setAssistant} setTargets={setTargets} locked={locked}/></section>
         <section className="live-totals" aria-hidden={editorMode==='quick'}>{keys.map(k=><div key={k}><small>{labels[k]}</small><strong>{totals[k].toLocaleString('pt-BR')} {k==='energyKcal'?'kcal':'g'}</strong></div>)}</section>
-        <TechnicalChecklist assistant={assistant} canReview={canReviewPlan(assistant)} hidden={editorMode==='quick'}/></>}
+        {rangeIssues.length>0&&<section className="panel range-issues" role="status"><h3>Faixas a revisar</h3><ul>{rangeIssues.map(issue=><li key={issue}>{issue}</li>)}</ul><label>Justificativa clínica<textarea value={assistant.rangeJustification??''} disabled={locked} onChange={event=>setAssistant(current=>({...current,rangeJustification:event.target.value}))}/></label></section>}<TechnicalChecklist assistant={assistant} canReview={canReviewPlan(assistant)} hidden={editorMode==='quick'}/></>}
       </aside>
     </div>}
   </section>
@@ -168,6 +170,12 @@ function EditorModeSwitch({mode,setMode}:{mode:EditorMode;setMode:(mode:EditorMo
 function TechnicalChecklist({assistant,canReview,hidden}:{assistant:PlanAssistantState;canReview:boolean;hidden:boolean}){
   const pending=assistantSteps.filter(step=>step!=='publish'&&!assistant.completedSteps.includes(step))
   return <section className="panel technical-checklist" aria-hidden={hidden}><h2>Pendencias tecnicas</h2>{canReview?<p className="muted">Assistente pronto para revisao.</p>:<ul>{pending.map(step=><li key={step}>{assistantLabels[step]}</li>)}</ul>}</section>
+}
+
+function TargetRangeInputs({state,setState,setTargets,locked}:{state:PlanAssistantState;setState:React.Dispatch<React.SetStateAction<PlanAssistantState>>;setTargets:React.Dispatch<React.SetStateAction<Record<string,number>>>;locked:boolean}){
+  const fields:[NutrientKey,string][]=[['energyKcal','Energia'],['proteinG','Proteína'],['carbohydrateG','Carboidrato'],['fatG','Gordura'],['fiberG','Fibra']]
+  const change=(key:NutrientKey,field:'min'|'target'|'max',value:number)=>{setState(current=>({...current,targetRanges:{...current.targetRanges,[key]:{min:current.targetRanges[key]?.min??0,target:current.targetRanges[key]?.target??0,max:current.targetRanges[key]?.max??0,[field]:value}}}));if(field==='target')setTargets(current=>({...current,[key]:value}))}
+  return <fieldset className="target-ranges"><legend>Faixas aceitáveis</legend>{fields.map(([key,label])=>{const range=state.targetRanges[key]??{min:0,target:0,max:0};return <div key={key}><strong>{label}</strong>{(['min','target','max'] as const).map(field=><label key={field}>{field==='min'?'Mín.':field==='target'?'Alvo':'Máx.'}<input aria-label={`${label} ${field}`} type="number" min="0" step="0.1" disabled={locked} value={range[field]} onChange={event=>change(key,field,Number(event.target.value))}/></label>)}</div>})}</fieldset>
 }
 
 function PlanAssistant({state,setState,locked}:{state:PlanAssistantState;setState:React.Dispatch<React.SetStateAction<PlanAssistantState>>;locked:boolean}){

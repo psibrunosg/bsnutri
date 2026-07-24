@@ -12,6 +12,8 @@ export type PlanAssistantState = {
   clinicalPresets: ClinicalPreset[]
   priorityMicronutrients: string[]
   visibility: PlanVisibility
+  targetRanges: NutrientRanges
+  rangeJustification: string
 }
 
 export type PlanVisibility = {
@@ -58,7 +60,7 @@ const requiredTargets: [string, string[]][] = [
 ]
 
 export function initialAssistantState(): PlanAssistantState {
-  return { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [], visibility: defaultPlanVisibility() }
+  return { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [], visibility: defaultPlanVisibility(), targetRanges: {}, rangeJustification: '' }
 }
 
 export function defaultPlanVisibility(): PlanVisibility {
@@ -98,6 +100,8 @@ export function sanitizeAssistantState(value: unknown): PlanAssistantState {
       ? source.priorityMicronutrients.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim())
       : [],
     visibility: sanitizePlanVisibility(source.visibility),
+    targetRanges: source.targetRanges&&typeof source.targetRanges==='object'?Object.fromEntries(Object.entries(source.targetRanges).map(([key,value])=>[key,normalizeRange(value as object)]).filter(([,value])=>value)): {},
+    rangeJustification: typeof source.rangeJustification==='string'?source.rangeJustification:'',
   }
 }
 
@@ -135,3 +139,4 @@ export function getPlanQualityIssues(state: PlanAssistantState, targets: PlanTar
   if (!state.priorityMicronutrients.length) issues.push('Informe micronutrientes prioritarios.')
   return issues
 }
+import { normalizeRange, type NutrientRanges } from './planRanges'
