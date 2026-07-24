@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { CalendarDays, ListChecks, LogOut, Menu, Plus, Search, Users, Utensils, X } from 'lucide-react'
+import { CalendarDays, ListChecks, LogOut, Menu, Plus, Search, Settings, Users, Utensils, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { NutritionWorkspace } from './NutritionWorkspace'
 import { PatientDetail } from './PatientDetail'
 import { ContentLibrary } from './ContentLibrary'
 import { PatientPortal } from './PatientPortal'
 import { CareWorkspace } from './CareWorkspace'
+import { SettingsWorkspace } from './SettingsWorkspace'
 import './App.css'
 import './AuthIllustration.css'
 
@@ -136,7 +137,7 @@ function Dashboard({ session, workspace }: { session: Session; workspace: Worksp
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [checkins, setCheckins] = useState<Checkin[]>([])
-  const [page, setPage] = useState<'patients' | 'nutrition' | 'care' | 'content'>(isReceptionist ? 'care' : 'patients')
+  const [page, setPage] = useState<'patients' | 'nutrition' | 'care' | 'content' | 'settings'>(isReceptionist ? 'care' : 'patients')
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<Patient | null>(null)
@@ -212,9 +213,9 @@ function Dashboard({ session, workspace }: { session: Session; workspace: Worksp
   const activePatients = patients.filter(patient => patient.status === 'active').length
   const withEmail = patients.filter(patient => Boolean(patient.email)).length
 
-  return <div className="app-shell"><aside className={menu ? 'sidebar open' : 'sidebar'}><div className="brand inverse"><span>BS</span><strong>BSNutri</strong><button aria-label="Fechar menu" onClick={() => setMenu(false)}><X/></button></div><nav>{!isReceptionist && <button className={page === 'patients' ? 'active' : ''} onClick={() => { setPage('patients'); setSelected(null); setMenu(false) }}><Users/>Pacientes</button>}{!isReceptionist && <button className={page === 'nutrition' ? 'active' : ''} onClick={() => { setPage('nutrition'); setSelected(null); setMenu(false) }}><Utensils/>Nutrição e planos</button>}{!isReceptionist && <button className={page === 'content' ? 'active' : ''} onClick={() => { setPage('content'); setSelected(null); setMenu(false) }}><ListChecks/>Biblioteca</button>}<button className={page === 'care' ? 'active' : ''} onClick={() => { setPage('care'); setSelected(null); setMenu(false) }}><CalendarDays/>Agenda e adesão</button></nav><button className="logout" onClick={() => supabase.auth.signOut()}><LogOut/>Sair</button></aside>
-    <main className="content"><header><button className="menu-button" aria-label="Abrir menu" onClick={() => setMenu(true)}><Menu/></button><div><small>{workspace.organizations?.name}</small><h1>{selected ? 'Prontuário nutricional' : page === 'nutrition' ? 'Nutrição e planos' : page === 'care' ? 'Agenda e adesão' : page === 'content' ? 'Biblioteca profissional' : 'Pacientes'}</h1></div></header>
-      {page === 'nutrition' && !isReceptionist ? <NutritionWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : page === 'content' && !isReceptionist ? <ContentLibrary session={session} organizationId={workspace.organization_id} patients={patients} canEditBrand={workspace.role==='owner'||workspace.role==='admin'}/> : page === 'care' ? <CareWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : selected && !isReceptionist ? <PatientDetail patient={selected} session={session} workspace={workspace} onBack={() => setSelected(null)}/> : !isReceptionist ? <>
+  return <div className="app-shell"><aside className={menu ? 'sidebar open' : 'sidebar'}><div className="brand inverse"><span>BS</span><strong>BSNutri</strong><button aria-label="Fechar menu" onClick={() => setMenu(false)}><X/></button></div><nav>{!isReceptionist && <button className={page === 'patients' ? 'active' : ''} onClick={() => { setPage('patients'); setSelected(null); setMenu(false) }}><Users/>Pacientes</button>}{!isReceptionist && <button className={page === 'nutrition' ? 'active' : ''} onClick={() => { setPage('nutrition'); setSelected(null); setMenu(false) }}><Utensils/>Nutrição e planos</button>}{!isReceptionist && <button className={page === 'content' ? 'active' : ''} onClick={() => { setPage('content'); setSelected(null); setMenu(false) }}><ListChecks/>Biblioteca</button>}{!isReceptionist && <button className={page === 'settings' ? 'active' : ''} onClick={() => { setPage('settings'); setSelected(null); setMenu(false) }}><Settings/>Configurações</button>}<button className={page === 'care' ? 'active' : ''} onClick={() => { setPage('care'); setSelected(null); setMenu(false) }}><CalendarDays/>Agenda e adesão</button></nav><button className="logout" onClick={() => supabase.auth.signOut()}><LogOut/>Sair</button></aside>
+    <main className="content"><header><button className="menu-button" aria-label="Abrir menu" onClick={() => setMenu(true)}><Menu/></button><div><small>{workspace.organizations?.name}</small><h1>{selected ? 'Prontuário nutricional' : page === 'nutrition' ? 'Nutrição e planos' : page === 'care' ? 'Agenda e adesão' : page === 'content' ? 'Biblioteca profissional' : page === 'settings' ? 'Configurações' : 'Pacientes'}</h1></div></header>
+      {page === 'nutrition' && !isReceptionist ? <NutritionWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : page === 'content' && !isReceptionist ? <ContentLibrary session={session} organizationId={workspace.organization_id} patients={patients} canEditBrand={workspace.role==='owner'||workspace.role==='admin'}/> : page === 'settings' && !isReceptionist ? <SettingsWorkspace organizationId={workspace.organization_id}/> : page === 'care' ? <CareWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : selected && !isReceptionist ? <PatientDetail patient={selected} session={session} workspace={workspace} onBack={() => setSelected(null)}/> : !isReceptionist ? <>
       <DashboardSummary total={patients.length} active={activePatients} withEmail={withEmail} shown={shown.length} query={query}/>
       <TodayPanel appointments={appointments} alerts={alerts} checkins={checkins} onReviewAppointment={reviewAppointment} onAlertAction={acknowledgeAlert}/>
       <PatientDirectory patients={shown} query={query} setQuery={setQuery} onSelect={setSelected} onCreate={() => setOpen(true)} error={error} filteredLabel={`${shown.length} paciente${shown.length === 1 ? '' : 's'}`}/>
@@ -274,11 +275,11 @@ export function App() {
   }, [recoveringPassword])
 
   if (recoveringPassword) return <AuthScreen recovery onRecoveryComplete={() => { setRecoveringPassword(false); window.history.replaceState({}, document.title, passwordRecoveryRedirect()) }}/>
-  if (loading) return <main className="loading">Carregando BSNutri...</main>
   if (!session) return <AuthScreen/>
-  if (patientAccess) return <PatientPortal patient={patientAccess}/>
-  if (!ready || !workspace) return <Bootstrap session={session} onReady={() => loadWorkspace(session)}/>
-  return <Dashboard session={session} workspace={workspace}/>
+  const indicator=loading?<div className="loading-indicator" role="status" aria-label="Atualizando dados"><span/></div>:null
+  if (patientAccess) return <><PatientPortal patient={patientAccess}/>{indicator}</>
+  if (!ready || !workspace) return <><Bootstrap session={session} onReady={() => loadWorkspace(session)}/>{indicator}</>
+  return <><Dashboard session={session} workspace={workspace}/>{indicator}</>
 }
 
 export default App

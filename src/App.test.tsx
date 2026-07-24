@@ -1,8 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
 import App from './App'
 
 describe('App', () => {
+  afterEach(() => cleanup())
+
   it('apresenta a autenticação do BSNutri', async () => {
     render(<App />)
     expect(await screen.findByText('Bem-vindo de volta')).toBeTruthy()

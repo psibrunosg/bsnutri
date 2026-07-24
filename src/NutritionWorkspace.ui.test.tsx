@@ -271,17 +271,27 @@ describe('NutritionWorkspace editor modes', () => {
     expect(screen.getByRole('button', { name: 'Cadastrar combinação' })).toBeDisabled()
   })
 
-  it('pré-valida uma importação antes de liberar a persistência', async () => {
-    fromMock.mockImplementation((table: string) => queryResult(table === 'food_sources' ? [{ id: 'source-1', name: 'TACO', code: 'taco', dataset_version: 'v1' }] : []))
+  it('usa a relação de versões do plano ao carregar rascunhos', async () => {
+    const plansQuery = queryResult([])
+    fromMock.mockImplementation((table: string) => table === 'plans' ? plansQuery : queryResult([]))
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
 
-    fireEvent.change(await screen.findByLabelText('Dados para importação'), { target: { value: 'nome;preparo;energia;proteína;carboidrato;gordura\nArroz;cozido;130;2,5;28;0,3' } })
-    expect(screen.getByText('1 item(ns) pronto(s) para importar')).toBeInTheDocument()
+    await waitFor(() => expect(plansQuery.select).toHaveBeenCalledWith(expect.stringContaining('plan_versions!plan_versions_plan_id_organization_id_fkey')))
+  })
 
-    const importButton=screen.getByRole('button', { name: 'Importar prévia validada' })
-    expect(importButton).toBeDisabled()
-    fireEvent.change(screen.getByLabelText('Fonte da importação'), { target: { value: 'source-1' } })
-    expect(importButton).toBeEnabled()
+  it('não recria um rascunho local depois de descartá-lo sem editar', async () => {
+    const key = 'bsnutri:plan-draft:org-1'
+    localStorage.setItem(key, JSON.stringify({ patientId: 'patient-1', title: 'Rascunho antigo', days: [], activeDay: 0, targets: {}, assistant: {}, editorMode: 'quick', savedAt: '2026-07-24T17:30:03.000Z' }))
+    const first = render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Descartar' }))
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(localStorage.getItem(key)).toBeNull()
+    first.unmount()
+
+    render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(screen.queryByText(/Há um rascunho local salvo/i)).not.toBeInTheDocument()
   })
 
   it('filtra e aplica modelo padrão como rascunho revisável', async () => {
