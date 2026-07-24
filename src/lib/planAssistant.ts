@@ -14,12 +14,14 @@ export type PlanAssistantState = {
   visibility: PlanVisibility
   targetRanges: NutrientRanges
   rangeJustification: string
+  mealDistributions: Record<string, number>
 }
 
 export type PlanVisibility = {
   showTotalKcal: boolean
   showTotalMacros: boolean
   showMealCalculations: boolean
+  showDiary: boolean
 }
 
 export const assistantLabels: Record<PlanAssistantStep, string> = {
@@ -60,11 +62,11 @@ const requiredTargets: [string, string[]][] = [
 ]
 
 export function initialAssistantState(): PlanAssistantState {
-  return { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [], visibility: defaultPlanVisibility(), targetRanges: {}, rangeJustification: '' }
+  return { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [], visibility: defaultPlanVisibility(), targetRanges: {}, rangeJustification: '', mealDistributions: {} }
 }
 
 export function defaultPlanVisibility(): PlanVisibility {
-  return { showTotalKcal: false, showTotalMacros: false, showMealCalculations: false }
+  return { showTotalKcal: false, showTotalMacros: false, showMealCalculations: false, showDiary: true }
 }
 
 export function sanitizePlanVisibility(value: unknown): PlanVisibility {
@@ -73,6 +75,7 @@ export function sanitizePlanVisibility(value: unknown): PlanVisibility {
     showTotalKcal: source.showTotalKcal === true,
     showTotalMacros: source.showTotalMacros === true,
     showMealCalculations: source.showMealCalculations === true,
+    showDiary: source.showDiary !== false,
   }
 }
 
@@ -102,6 +105,7 @@ export function sanitizeAssistantState(value: unknown): PlanAssistantState {
     visibility: sanitizePlanVisibility(source.visibility),
     targetRanges: source.targetRanges&&typeof source.targetRanges==='object'?Object.fromEntries(Object.entries(source.targetRanges).map(([key,value])=>[key,normalizeRange(value as object)]).filter(([,value])=>value)): {},
     rangeJustification: typeof source.rangeJustification==='string'?source.rangeJustification:'',
+    mealDistributions: source.mealDistributions&&typeof source.mealDistributions==='object'?Object.fromEntries(Object.entries(source.mealDistributions).filter(([,value])=>Number.isFinite(value)&&Number(value)>=0).map(([key,value])=>[key,Number(value)])): {},
   }
 }
 
@@ -137,6 +141,8 @@ export function getPlanQualityIssues(state: PlanAssistantState, targets: PlanTar
     .map(([label]) => `Informe meta de ${label}.`)
   if (!canReviewPlan(state)) issues.push('Conclua as etapas obrigatorias do assistente.')
   if (!state.priorityMicronutrients.length) issues.push('Informe micronutrientes prioritarios.')
+  const distribution=Object.values(state.mealDistributions).reduce((sum,value)=>sum+value,0)
+  if (Object.keys(state.mealDistributions).length && (!Number.isFinite(distribution)||Math.abs(distribution-100)>0.01)) issues.push('A distribuição entre refeições deve somar 100%.')
   return issues
 }
 import { normalizeRange, type NutrientRanges } from './planRanges'

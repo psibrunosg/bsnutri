@@ -56,6 +56,8 @@ type Appointment = {
 type SwapRequest = {
   id: string;
   substitution_id: string;
+  meal_item_id: string;
+  plan_version_id: string;
   status: string;
   professional_note: string | null;
 };
@@ -167,7 +169,7 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
         .order("starts_at", { ascending: false }),
       supabase
         .from("substitution_requests")
-        .select("id,substitution_id,status,professional_note")
+        .select("id,substitution_id,meal_item_id,plan_version_id,status,professional_note")
         .eq("patient_id", patient.id)
         .order("created_at", { ascending: false }),
       supabase
@@ -195,7 +197,7 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
       const result = await supabase.from("appointments").select("id,starts_at,status,modality").eq("patient_id", patient.id).order("starts_at", { ascending: false });
       if (result.error) setOptionalError(module, result.error.message); else { setAppointments(result.data ?? []); setOptionalError(module); }
     } else if (module === "requests") {
-      const result = await supabase.from("substitution_requests").select("id,substitution_id,status,professional_note").eq("patient_id", patient.id).order("created_at", { ascending: false });
+      const result = await supabase.from("substitution_requests").select("id,substitution_id,meal_item_id,plan_version_id,status,professional_note").eq("patient_id", patient.id).order("created_at", { ascending: false });
       if (result.error) setOptionalError(module, result.error.message); else { setRequests(result.data ?? []); setOptionalError(module); }
     } else if (module === "intake") {
       const result = await supabase.from("form_assignments").select("id,status,form_template_versions(title,form_fields(id,label,field_type,required,position)),form_responses(values)").eq("patient_id", patient.id).order("assigned_at", { ascending: false });
@@ -615,12 +617,13 @@ function PlanCard({
                         </li>
                       ))}
                     </ul>
-                    <MealCheckin
+                    {visibility.showDiary&&<MealCheckin
                       meal={meal}
                       versionId={version.id}
                       patient={patient}
                       drive={drive}
-                    />
+                      approvedRequests={requests.filter(request=>request.status==='approved'&&request.plan_version_id===version.id&&meal.meal_items.some(item=>item.id===request.meal_item_id&&item.meal_item_substitutions.some(option=>option.id===request.substitution_id)))}
+                    />}
                   </div>
                 </article>
               ))}
@@ -722,11 +725,13 @@ function MealCheckin({
   versionId,
   patient,
   drive,
+  approvedRequests,
 }: {
   meal: Meal;
   versionId: string;
   patient: PatientAccess;
   drive: DriveStatus;
+  approvedRequests: SwapRequest[];
 }) {
   const [message, setMessage] = useState(""),
     [open, setOpen] = useState(false);
@@ -763,6 +768,7 @@ function MealCheckin({
           help_requested: d.get("help") === "on",
           symptoms: String(d.get("symptoms")) || null,
           note: String(d.get("note")) || null,
+          substitution_request_id: String(d.get("approvedSwap")) || null,
           created_by: data.session.user.id,
         },
         { onConflict: "patient_id,meal_id,occurred_on" },
@@ -808,6 +814,7 @@ function MealCheckin({
               </select>
             </label>
           </div>
+          {approvedRequests.length>0&&<label>Troca aprovada usada<select name="approvedSwap" defaultValue=""><option value="">Não usei troca aprovada</option>{approvedRequests.map(request=>{const option=meal.meal_items.flatMap(item=>item.meal_item_substitutions??[]).find(item=>item.id===request.substitution_id);return <option key={request.id} value={request.id}>{option?`${option.description} · ${Number(option.grams).toLocaleString('pt-BR')} ${option.unit}`:'Troca aprovada'}</option>})}</select></label>}
           <div className="checkin-scales">
             {[
               ["hunger", "Fome antes"],

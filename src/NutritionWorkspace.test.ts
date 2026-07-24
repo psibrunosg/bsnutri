@@ -44,7 +44,10 @@ describe('mapDraftRows', () => {
       objective: 'Hipertrofia',
       clinicalPresets: ['hypertrophy'],
       priorityMicronutrients: ['Ferro'],
-      visibility: { showTotalKcal: true, showTotalMacros: false, showMealCalculations: true },
+      visibility: { showTotalKcal: true, showTotalMacros: false, showMealCalculations: true, showDiary: true },
+      targetRanges: {},
+      rangeJustification: '',
+      mealDistributions: {},
     })
   })
 })
@@ -84,6 +87,7 @@ describe('plan assistant', () => {
       showTotalKcal: true,
       showTotalMacros: false,
       showMealCalculations: true,
+      showDiary: true,
     })
   })
 })
