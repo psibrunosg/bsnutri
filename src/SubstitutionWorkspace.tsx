@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
+import { rankSubstitutions } from "./lib/substitutionEngine";
 
 type Item = {
   id: string;
@@ -8,8 +9,9 @@ type Item = {
   plan_version_id: string;
   plan_title: string;
   patient_name: string;
+  nutrients: Record<string, number>;
 };
-type Food = { id: string; name: string };
+type Food = { id: string; name: string; nutrients: Record<string, number>; tags: string[]; costBand: "low" | "medium" | "high" | null };
 type Request = {
   id: string;
   status: string;
@@ -30,6 +32,7 @@ export function SubstitutionWorkspace({
   const [items, setItems] = useState<Item[]>([]),
     [foods, setFoods] = useState<Food[]>([]),
     [requests, setRequests] = useState<Request[]>([]),
+    [selectedItemId, setSelectedItemId] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
@@ -37,12 +40,12 @@ export function SubstitutionWorkspace({
       supabase
         .from("meal_items")
         .select(
-          "id,description,meals(plan_days(plan_version_id,plan_versions(locked_at,plans(title,patients(full_name)))))",
+          "id,description,nutrient_snapshot,meals(plan_days(plan_version_id,plan_versions(locked_at,plans(title,patients(full_name)))))",
         )
         .eq("organization_id", organizationId),
       supabase
         .from("foods")
-        .select("id,name")
+        .select("id,name,cost_band,cultural_tags,preference_tags,availability_tags,food_nutrient_values(amount_per_100g,nutrients(code))")
         .eq("organization_id", organizationId)
         .eq("is_active", true)
         .order("name"),
@@ -80,18 +83,20 @@ export function SubstitutionWorkspace({
               plan_version_id: day.plan_version_id,
               plan_title: plan?.title ?? "Plano",
               patient_name: plan?.patients?.full_name ?? "Paciente",
+              nutrients: (row.nutrient_snapshot ?? {}) as Record<string, number>,
             },
           ]
         : [];
     });
     setItems(mapped);
-    setFoods(f.data ?? []);
+    setFoods(((f.data ?? []) as unknown as {id:string;name:string;cost_band:Food['costBand'];cultural_tags:string[]|null;preference_tags:string[]|null;availability_tags:string[]|null;food_nutrient_values:{amount_per_100g:number;nutrients:{code:string}|null}[]}[]).map(food=>({id:food.id,name:food.name,costBand:food.cost_band,tags:[...(food.cultural_tags??[]),...(food.preference_tags??[]),...(food.availability_tags??[])],nutrients:Object.fromEntries((food.food_nutrient_values??[]).map(value=>[value.nutrients?.code==='energy_kcal'?'energyKcal':value.nutrients?.code==='protein_g'?'proteinG':value.nutrients?.code==='carbohydrate_g'?'carbohydrateG':value.nutrients?.code==='fat_g'?'fatG':value.nutrients?.code==='fiber_g'?'fiberG':'',Number(value.amount_per_100g)]).filter(([key])=>key))})));
     setRequests((r.data ?? []) as unknown as Request[]);
     setMessage("");
   }, [organizationId]);
   useEffect(() => {
     void load();
   }, [load]);
+  const rankedFoods = useMemo(() => { const item=items.find(value=>value.id===selectedItemId); return item ? rankSubstitutions(foods,{reference:{id:`meal-${item.id}`,name:item.description,nutrients:item.nutrients}}) : foods.map(food=>({...food,score:0,reasons:[]})); }, [foods,items,selectedItemId]);
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -142,7 +147,7 @@ export function SubstitutionWorkspace({
         <form onSubmit={add}>
           <label>
             Item do plano
-            <select name="item" required>
+            <select name="item" required value={selectedItemId} onChange={event=>setSelectedItemId(event.target.value)}>
               <option value="">Selecione</option>
               {items.map((i) => (
                 <option key={i.id} value={i.id}>
@@ -155,13 +160,14 @@ export function SubstitutionWorkspace({
             Alimento substituto
             <select name="food" required>
               <option value="">Selecione</option>
-              {foods.map((f) => (
+              {rankedFoods.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.name}
+                  {f.name}{f.reasons.length?` · ${f.reasons.join(', ')}`:''}
                 </option>
               ))}
             </select>
           </label>
+          {selectedItemId&&rankedFoods[0]&&<small className="muted">Sugestão principal: {rankedFoods[0].name}. {rankedFoods[0].reasons.join(', ') || 'Avalie a equivalência clínica.'}</small>}
           <label>
             Quantidade equivalente (g)
             <input name="grams" type="number" min="0.01" step="0.01" required />
