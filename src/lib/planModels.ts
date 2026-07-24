@@ -1,9 +1,10 @@
 export type ModelDimensions = { approaches:string[]; objectives:string[]; restrictions:string[]; preferences:string[]; contexts:string[] }
 export type ModelRules = { targets:Record<string,number>; guidance:string[] }
-export type BuiltInPlanModel = { id:string; name:string; summary:string; dimensions:ModelDimensions; rules:ModelRules }
+export type BuiltInPlanModel = { id:string; name:string; summary:string; dimensions:ModelDimensions; rules:ModelRules; requiredContext?:string[]; sources?:string[]; limits?:string[] }
 
 const dimensions=(approach:string,objective:string,contexts:string[]=[]):ModelDimensions=>({approaches:[approach],objectives:[objective],restrictions:[],preferences:[],contexts})
 const rules=(targets:Record<string,number>,...guidance:string[]):ModelRules=>({targets,guidance})
+const specialized=(id:string,name:string,objective:string,requiredContext:string[],sources:string[],limits:string[]):BuiltInPlanModel=>({id,name,summary:'Estrutura especializada para adaptação e aprovação profissional.',dimensions:dimensions('Especializado',objective),rules:rules({},'Defina metas somente após revisar o contexto clínico e a fonte.'),requiredContext,sources,limits})
 
 export const builtInPlanModels:BuiltInPlanModel[]=[
   {id:'balanced-brazilian',name:'Alimentação brasileira equilibrada',summary:'Estrutura culturalmente familiar para revisão clínica.',dimensions:dimensions('Brasileira equilibrada','Saúde e rotina',['cultura brasileira']),rules:rules({energyKcal:2000,proteinG:100,carbohydrateG:250,fatG:67,fiberG:30,waterMl:2000},'Priorize alimentos in natura e preparações caseiras.')},
@@ -17,6 +18,13 @@ export const builtInPlanModels:BuiltInPlanModel[]=[
   {id:'glycemic',name:'Controle glicêmico',summary:'Estrutura com foco em qualidade e distribuição de carboidratos.',dimensions:dimensions('Flexível','Controle glicêmico'),rules:rules({energyKcal:1900,proteinG:115,carbohydrateG:190,fatG:72,fiberG:35,waterMl:2200},'Revise distribuição de carboidratos e fibras.')},
   {id:'low-cost',name:'Baixo custo',summary:'Combinações acessíveis e adaptáveis ao orçamento.',dimensions:dimensions('Brasileira equilibrada','Baixo custo',['baixo custo']),rules:rules({energyKcal:2000,proteinG:100,carbohydrateG:255,fatG:65,fiberG:30,waterMl:2000},'Priorize alimentos disponíveis na região.')},
   {id:'busy-routine',name:'Rotina corrida',summary:'Refeições simples para pouco tempo de preparo.',dimensions:dimensions('Flexível','Adesão',['rotina corrida']),rules:rules({energyKcal:2000,proteinG:110,carbohydrateG:240,fatG:70,fiberG:30,waterMl:2200},'Planeje preparos, compras e alternativas rápidas.')},
+  specialized('renal','Renal','Doenca renal',['Estagio e terapia renal','Exames e eletrolitos relevantes','Preferencias e restricoes atuais'],['KDIGO 2024 CKD Guideline','KDOQI Nutrition in CKD 2020'],['Nao aplicar restricao unica de potassio, fosforo ou proteina sem contexto documentado.']),
+  specialized('pregnancy','Gestacao','Gestacao',['Trimestre','IMC pre-gestacional e evolucao ponderal','Contexto obstetrico e suplementacao prescrita'],['OMS Antenatal Care','ACOG Weight Gain During Pregnancy'],['Nao sugerir nem dosar suplementos automaticamente.']),
+  specialized('vegetarian-vegan','Vegetariano ou vegano','Padrao alimentar vegetariano',['Padrao alimentar','Fontes proteicas e nutrientes criticos','Fase da vida'],['Academy of Nutrition and Dietetics 2025 Position Paper'],['Nao extrapolar a referencia de adultos para infancia ou gestacao sem fonte especifica.']),
+  specialized('sport','Esporte','Desempenho esportivo',['Modalidade, carga e calendario de treino','Objetivo e composicao corporal','Uso de suplementos'],['ACSM Nutrition and Athletic Performance','IOC Consensus Statements'],['Nao recomendar suplementos automaticamente.']),
+  specialized('pcos','SOP','Sindrome dos ovarios policisticos',['Diagnostico e contexto clinico','Risco cardiometabolico','Preferencias e rotina'],['International Evidence-based Guideline for PCOS 2023'],['Nao pressupor uma dieta unica superior para todas as pessoas com SOP.']),
+  specialized('bariatric','Bariatrica','Pos-cirurgia bariatrica',['Tecnica e data da cirurgia','Fase alimentar e protocolo do servico','Exames e deficiencias'],['ASMBS Nutritional Guidelines 2016','AACE/TOS/ASMBS/OMA/ASA 2019'],['Nao definir progressao alimentar sem protocolo e acompanhamento da equipe.']),
+  specialized('pediatric','Pediatrica','Infancia e adolescencia',['Idade e desenvolvimento','Aleitamento e alimentacao complementar','Responsavel e contexto familiar'],['OMS Complementary Feeding 6-23 months','ESPGHAN Infant Feeding Guidance'],['Nao aplicar modelo adulto; revisar idade corrigida quando aplicavel.']),
 ]
 
 export function matchesModel(model:{dimensions:ModelDimensions},filters:Partial<ModelDimensions>){

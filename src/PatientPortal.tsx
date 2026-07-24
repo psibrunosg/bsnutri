@@ -10,6 +10,7 @@ import {
 import { supabase } from "./lib/supabase";
 import { sanitizePlanVisibility, type PlanVisibility } from "./lib/planAssistant";
 import { createDriveClient, diaryPhotoFileName } from "./lib/driveClient";
+import { printClinicalDocument } from "./lib/clinicalExport";
 
 type PatientAccess = {
   id: string;
@@ -442,6 +443,7 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
               patient={patient}
               requests={requests}
               drive={drive}
+              brandName={brand?.public_name ?? "Clínica BS"}
               reload={load}
             />
           ))}
@@ -549,17 +551,20 @@ function PlanCard({
   patient,
   requests,
   drive,
+  brandName,
   reload,
 }: {
   plan: Plan;
   patient: PatientAccess;
   requests: SwapRequest[];
   drive: DriveStatus;
+  brandName: string;
   reload: () => Promise<void>;
 }) {
   const version = plan.plan_versions;
   const visibility = sanitizePlanVisibility((version?.assistant_state as { visibility?: unknown } | undefined)?.visibility);
   const totals = version ? planSummary(version) : { energyKcal: 0, proteinG: 0, carbohydrateG: 0, fatG: 0 };
+  const exportPlan = () => { if (!version) return; const body = version.plan_days.map(day => `${day.label}\n${day.meals.map(meal => `${meal.label}: ${meal.meal_items.map(item => `${item.description} (${item.grams} g)`).join(", ")}`).join("\n")}`).join("\n\n"); printClinicalDocument(`${brandName} · Plano alimentar`, `${patient.full_name} · versão ${version.version_no}`, body); };
   return (
     <article className="portal-plan">
       <header>
@@ -573,6 +578,7 @@ function PlanCard({
             {new Date(plan.published_at).toLocaleDateString("pt-BR")}
           </time>
         )}
+        <button className="secondary" onClick={exportPlan}>Salvar em PDF</button>
       </header>
       <CalculationSummary summary={totals} visibility={visibility}/>
       {version?.plan_days
