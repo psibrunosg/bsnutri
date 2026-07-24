@@ -40,6 +40,18 @@ export function foodRenderSrc(renderPath:string|undefined|null,name:string){
   return catalogRenderSrc(renderPath)??(name.toLocaleLowerCase('pt-BR').includes('peixe')?'/food-renders/peixe-grelhado-legumes.webp':null)
 }
 
+export function describeCatalogServing({servingGrams,householdMeasureLabel,householdMeasureGrams}:{servingGrams:number|null;householdMeasureLabel:string|null;householdMeasureGrams:number|null}){
+  if(householdMeasureLabel&&householdMeasureGrams&&householdMeasureGrams>0)return `${householdMeasureLabel} · ${householdMeasureGrams} g`
+  return servingGrams&&servingGrams>0?`${servingGrams} g · medida caseira não informada`:'Medida e porção não informadas'
+}
+
+export function deriveServingNutrients(nutrients:Nutrients,available:NutrientKey[],servingGrams:number|null){
+  const serving=emptyNutrients()
+  if(!servingGrams||servingGrams<=0)return serving
+  for(const key of available)serving[key]=nutrients[key]*servingGrams/100
+  return serving
+}
+
 export function normalizeCatalogText(value:string){
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').trim()
 }

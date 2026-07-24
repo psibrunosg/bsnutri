@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(19);
 
 set local role postgres;
 insert into auth.users (id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at) values
@@ -30,8 +30,8 @@ insert into public.foods(id,source_id,source_food_code,name,preparation_state,ca
 set local role authenticated;
 insert into public.foods(id,organization_id,name,preparation_state,catalog_kind,created_by) values
   ('39000000-0000-0000-0000-000000000001','29000000-0000-0000-0000-000000000001','Arroz','cozido','food','19000000-0000-0000-0000-000000000001');
-insert into public.foods(id,organization_id,name,preparation_state,catalog_kind,yield_grams,serving_grams,created_by) values
-  ('39000000-0000-0000-0000-000000000002','29000000-0000-0000-0000-000000000001','Arroz temperado','pronto','preparation',300,100,'19000000-0000-0000-0000-000000000001'),
+insert into public.foods(id,organization_id,name,preparation_state,catalog_kind,yield_grams,serving_grams,portion_count,household_measure_label,household_measure_grams,created_by) values
+  ('39000000-0000-0000-0000-000000000002','29000000-0000-0000-0000-000000000001','Arroz temperado','pronto','preparation',300,100,3,'1 concha',100,'19000000-0000-0000-0000-000000000001'),
   ('39000000-0000-0000-0000-000000000003','29000000-0000-0000-0000-000000000001','Prato brasileiro','refeicao','combination',400,400,'19000000-0000-0000-0000-000000000001');
 insert into public.food_components(parent_food_id,component_food_id,organization_id,grams,position) values
   ('39000000-0000-0000-0000-000000000002','39000000-0000-0000-0000-000000000001','29000000-0000-0000-0000-000000000001',250,0),
@@ -42,6 +42,13 @@ select is((select catalog_kind::text from public.foods where id='39000000-0000-0
 select is((select catalog_kind::text from public.foods where id='39000000-0000-0000-0000-000000000003'),'combination','cadastra combinacao');
 select is((select count(*)::integer from public.food_components),2,'registra componentes das entidades compostas');
 select is((select serving_grams::integer from public.foods where id='39000000-0000-0000-0000-000000000002'),100,'preserva rendimento e porcao');
+select is((select portion_count::integer from public.foods where id='39000000-0000-0000-0000-000000000002'),3,'preserva numero de porcoes');
+select is((select household_measure_label from public.foods where id='39000000-0000-0000-0000-000000000002'),'1 concha','preserva medida caseira explicita');
+select throws_ok(
+  $$insert into public.foods(organization_id,name,preparation_state,catalog_kind,household_measure_label,created_by) values ('29000000-0000-0000-0000-000000000001','Medida incompleta','pronto','food','1 colher','19000000-0000-0000-0000-000000000001')$$,
+  '.*foods_household_measure_complete.*',
+  'rejeita medida caseira sem peso registrado'
+);
 select is((select count(*)::integer from public.foods where organization_id is null),1,'catálogo global permanece visível ao membro clínico');
 select is((select review_status from public.foods where id='39000000-0000-0000-0000-000000000001'),'pending_review','novo item próprio inicia pendente de revisão');
 insert into public.foods(id,organization_id,name,preparation_state,catalog_kind,review_status,reviewed_by,created_by) values

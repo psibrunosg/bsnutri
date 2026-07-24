@@ -106,11 +106,12 @@ describe('NutritionWorkspace editor modes', () => {
   })
 
   it('filtra catálogo por sinônimo e mostra favoritos pessoais', async () => {
-    const food = { id: 'food-1', name: 'Mandioca', preparation_state: 'cozida', catalog_kind: 'food', search_terms: ['aipim', 'macaxeira'], cultural_tags: ['Nordeste'], restriction_tags: ['sem glúten'], preference_tags: [], availability_tags: [], cost_band: 'low', food_nutrient_values: [] }
+    const food = { id: 'food-1', name: 'Mandioca', preparation_state: 'cozida', catalog_kind: 'food', serving_grams: 80, household_measure_label: '1 concha', household_measure_grams: 80, search_terms: ['aipim', 'macaxeira'], cultural_tags: ['Nordeste'], restriction_tags: ['sem glúten'], preference_tags: [], availability_tags: [], cost_band: 'low', food_nutrient_values: [] }
     fromMock.mockImplementation((table: string) => queryResult(table === 'foods' ? [food] : table === 'food_user_preferences' ? [{ food_id: 'food-1', is_favorite: true, last_used_at: '2026-07-24T12:00:00Z' }] : []))
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
     fireEvent.change(await screen.findByLabelText('Buscar no catálogo'), { target: { value: 'macaxeira' } })
     expect(screen.getByText('Mandioca')).toBeInTheDocument()
+    expect(screen.getByText(/1 concha · 80 g/)).toBeInTheDocument()
     fireEvent.click(screen.getByText('Favoritos').closest('button')!)
     expect(screen.getByText('Mandioca')).toBeInTheDocument()
   })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { catalogRenderSrc, deriveCatalogNutrients, foodRenderSrc, matchesCatalogSearch, parseCatalogImport } from './catalog'
+import { catalogRenderSrc, describeCatalogServing, deriveCatalogNutrients, deriveServingNutrients, foodRenderSrc, matchesCatalogSearch, parseCatalogImport } from './catalog'
 import { emptyNutrients } from './nutrition'
 
 describe('deriveCatalogNutrients',()=>{
@@ -44,6 +44,21 @@ describe('matchesCatalogSearch',()=>{
     expect(matchesCatalogSearch(item,'sem gluten')).toBe(true)
     expect(matchesCatalogSearch(item,'cozida')).toBe(true)
     expect(matchesCatalogSearch(item,'peixe')).toBe(false)
+  })
+})
+
+describe('deriveServingNutrients',()=>{
+  it('calcula nutrientes da porção a partir da composição por 100 g',()=>{
+    const result=deriveServingNutrients({...emptyNutrients(),energyKcal:112,proteinG:3.27},['energyKcal','proteinG'],150)
+    expect(result.energyKcal).toBeCloseTo(168)
+    expect(result.proteinG).toBeCloseTo(4.905)
+  })
+})
+
+describe('describeCatalogServing',()=>{
+  it('mostra medida caseira somente quando peso explícito existe',()=>{
+    expect(describeCatalogServing({servingGrams:80,householdMeasureLabel:'1 concha',householdMeasureGrams:80})).toBe('1 concha · 80 g')
+    expect(describeCatalogServing({servingGrams:80,householdMeasureLabel:null,householdMeasureGrams:null})).toBe('80 g · medida caseira não informada')
   })
 })
 
