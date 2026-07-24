@@ -26,6 +26,15 @@ function queryResult(data: unknown[] = []) {
   }
 }
 
+function queryError(message: string) {
+  return {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: null, error: { message } }),
+  }
+}
+
 function mutationResult(data: unknown = null) {
   return {
     upsert: vi.fn().mockReturnThis(),
@@ -90,6 +99,59 @@ describe('PatientPortal visibility controls', () => {
     expect(screen.queryAllByText('130 kcal').length).toBe((showsPlanTotal ? 1 : 0) + (showsMealTotal ? 1 : 0))
   })
 
+  it('mantem o plano disponível quando a marca falha e tenta apenas a marca novamente', async () => {
+    fromMock.mockImplementation((table: string) => table === 'plans' ? queryResult(plan({})) : table === 'organization_branding' ? queryError('Marca indisponível') : queryResult([]))
+
+    render(<PatientPortal patient={patient}/>)
+
+    expect(await screen.findByText('Plano A')).toBeInTheDocument()
+    expect(screen.getByText(/Não foi possível carregar a marca da clínica/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Tentar novamente/i }))
+    expect(fromMock.mock.calls.filter(([table]) => table === 'organization_branding')).toHaveLength(2)
+    expect(fromMock.mock.calls.filter(([table]) => table === 'plans')).toHaveLength(1)
+  })
+
+  it('mantem o plano disponível quando as metas falham e tenta apenas as metas novamente', async () => {
+    fromMock.mockImplementation((table: string) => table === 'plans' ? queryResult(plan({})) : table === 'patient_goals' ? queryError('Metas indisponíveis') : queryResult([]))
+
+    render(<PatientPortal patient={patient}/>)
+
+    expect(await screen.findByText('Plano A')).toBeInTheDocument()
+    expect(screen.getByText(/Não foi possível carregar as metas/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Tentar novamente/i }))
+    expect(fromMock.mock.calls.filter(([table]) => table === 'patient_goals')).toHaveLength(2)
+    expect(fromMock.mock.calls.filter(([table]) => table === 'plans')).toHaveLength(1)
+  })
+
+  it('mantem o diário textual quando o status do Drive falha e permite tentar apenas o Drive novamente', async () => {
+    fromMock.mockImplementation((table: string) => queryResult(table === 'plans' ? plan({}) : []))
+    rpcMock.mockImplementation((name: string) => name === 'get_patient_drive_status'
+      ? Promise.resolve({ data: null, error: { message: 'Drive indisponível' } })
+      : Promise.resolve({ data: null, error: null }))
+
+    render(<PatientPortal patient={patient}/>)
+
+    await screen.findByText('Plano A')
+    expect(screen.getByText(/Não foi possível carregar o envio de fotos/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Tentar novamente/i }))
+    expect(rpcMock.mock.calls.filter(([name]) => name === 'get_patient_drive_status')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: /Registrar como foi/i }))
+    expect(screen.getByLabelText(/Foto do diario/i)).toBeDisabled()
+  })
+
+  it('usa a identidade padrão quando a imagem da marca falha e permite nova tentativa', async () => {
+    fromMock.mockImplementation((table: string) => queryResult(table === 'plans' ? plan({}) : table === 'organization_branding' ? [{ public_name: 'Clínica teste', primary_color: '#123456', logo_url: 'https://logo.test/marca.webp' }] : []))
+
+    render(<PatientPortal patient={patient}/>)
+
+    await screen.findByText('Plano A')
+    fireEvent.error(screen.getByAltText('Logo Clínica teste'))
+    expect(screen.getByText(/Não foi possível carregar a imagem da marca/i)).toBeInTheDocument()
+    expect(screen.getByText('BS')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Tentar novamente/i }))
+    expect(screen.getByAltText('Logo Clínica teste')).toBeInTheDocument()
+  })
+
   it('desabilita foto quando Drive nao esta conectado e mantem diario textual', async () => {
     fromMock.mockImplementation((table: string) => queryResult(table === 'plans' ? plan({}) : []))
 
@@ -99,6 +161,15 @@ describe('PatientPortal visibility controls', () => {
 
     expect(screen.getByLabelText(/Foto do diario/i)).toBeDisabled()
     expect(screen.getByLabelText(/Nota/i)).toBeEnabled()
+  })
+
+  it('abre no resumo de hoje com refeições previstas e registro de água', async () => {
+    fromMock.mockImplementation((table: string) => queryResult(table === 'plans' ? plan({}) : []))
+    render(<PatientPortal patient={patient}/>)
+    await screen.findByRole('region', { name: 'Resumo de hoje' })
+    expect(screen.getByText('Seu próximo passo')).toBeInTheDocument()
+    expect(screen.getByText('Almoco')).toBeInTheDocument()
+    expect(screen.getByLabelText('Água de hoje em ml')).toBeInTheDocument()
   })
 
   it('envia foto para Drive conectado e salva metadados', async () => {

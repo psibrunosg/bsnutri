@@ -17,6 +17,8 @@ export type NutrientTargets = Partial<Nutrients>
 
 export interface FoodPortion {
   id: string
+  /** Referência estável do catálogo; mantém alimento global e próprio distintos mesmo com o mesmo nome. */
+  foodId?: string
   name: string
   grams: number
   nutrientsPer100g: Nutrients

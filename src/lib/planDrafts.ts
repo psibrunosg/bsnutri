@@ -2,7 +2,7 @@ import { emptyNutrients, type Meal, type Nutrients } from './nutrition'
 import { sanitizeAssistantState, type PlanAssistantState } from './planAssistant'
 
 export type EditorDay = { id: string; label: string; kind: string; meals: Meal[] }
-type PlanItemRow = { id: string; description: string; grams: number; nutrient_snapshot: Partial<Nutrients> | null; meal_item_substitutions?: { is_active: boolean }[] }
+type PlanItemRow = { id: string; food_id?: string | null; description: string; grams: number; nutrient_snapshot: Partial<Nutrients> | null; meal_item_substitutions?: { is_active: boolean }[] }
 type PlanMealRow = { id: string; label: string; position: number; meal_items: PlanItemRow[] }
 type PlanDayRow = { id: string; label: string; kind: string; day_index: number; meals: PlanMealRow[] }
 type PlanVersionRow = { id: string; version_no: number; targets?: Record<string,number>; assistant_state?: unknown; locked_at?: string | null; plan_days: PlanDayRow[] }
@@ -16,7 +16,7 @@ export function mapDraftRows(rows: PlanRow[]): DraftSummary[] {
       id:day.id,label:day.label,kind:day.kind,
       meals:[...(day.meals??[])].sort((a,b)=>a.position-b.position).map(meal=>({
         id:meal.id,name:meal.label,
-        items:[...(meal.meal_items??[])].map(item=>({id:item.id,name:item.description,grams:Number(item.grams),nutrientsPer100g:{...emptyNutrients(),...(item.nutrient_snapshot??{})},hasReviewedSubstitution:(item.meal_item_substitutions??[]).some(substitution=>substitution.is_active)})),
+        items:[...(meal.meal_items??[])].map(item=>({id:item.id,foodId:item.food_id??undefined,name:item.description,grams:Number(item.grams),nutrientsPer100g:{...emptyNutrients(),...(item.nutrient_snapshot??{})},hasReviewedSubstitution:(item.meal_item_substitutions??[]).some(substitution=>substitution.is_active)})),
       })),
     }))
     return{id:plan.id,patientId:plan.patient_id,title:plan.title,status:plan.status??'draft',updatedAt:plan.updated_at,versionId:version?.id??'',version:version?.version_no??0,targets:version?.targets??{},assistantState:sanitizeAssistantState(version?.assistant_state),locked:Boolean(version?.locked_at),days}
