@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import {
   Check,
   ListChecks,
@@ -73,6 +73,12 @@ type IntakeAssignment = {
   form_responses: { values: Record<string, string> }[];
 };
 type DriveStatus = { status: "missing" | "connected"; can_upload_photos: boolean };
+type PatientGoal = { id:string; kind:string; title:string; target_value:number|null; target_unit:string|null };
+type WaterLog = { amount_ml:number; occurred_on:string };
+type ContentDelivery = { id:string; delivered_at:string; snapshot:{ title?:string; body?:string; content_type?:string } };
+type WeeklySummary = { period_days:number; meal_checkins:number; completed_meals:number; water_ml:number; active_goals:number };
+type Brand = { public_name:string; primary_color:string; logo_url:string|null };
+type OptionalModule = "appointments" | "requests" | "intake" | "goals" | "water" | "branding" | "content" | "drive" | "summary" | "image";
 const driveClient = createDriveClient();
 type NutritionSummary = { energyKcal: number; proteinG: number; carbohydrateG: number; fatG: number };
 
@@ -115,21 +121,45 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
     [appointments, setAppointments] = useState<Appointment[]>([]),
     [requests, setRequests] = useState<SwapRequest[]>([]),
     [intakeAssignments, setIntakeAssignments] = useState<IntakeAssignment[]>([]),
+    [goals, setGoals] = useState<PatientGoal[]>([]),
+    [water, setWater] = useState<WaterLog | null>(null),
+    [deliveries, setDeliveries] = useState<ContentDelivery[]>([]),
+    [weeklySummary, setWeeklySummary] = useState<WeeklySummary | null>(null),
+    [brand,setBrand]=useState<Brand|null>(null),
     [drive, setDrive] = useState<DriveStatus>({ status: "missing", can_upload_photos: false }),
     [loading, setLoading] = useState(true),
+    [loadError, setLoadError] = useState(""),
+    [optionalErrors, setOptionalErrors] = useState<Partial<Record<OptionalModule, string>>>({}),
+    [brandImageFailed, setBrandImageFailed] = useState(false),
+    [brandImageRetry, setBrandImageRetry] = useState(0),
     [error, setError] = useState("");
-  const load = useCallback(async () => {
+  function setOptionalError(module: OptionalModule, message?: string) {
+    setOptionalErrors((current) => {
+      const next = { ...current };
+      if (message) next[module] = message;
+      else delete next[module];
+      return next;
+    });
+  }
+
+  const loadPlan = useCallback(async () => {
     setLoading(true);
-    setError("");
-    const [p, a, r, i, d] = await Promise.all([
-      supabase
-        .from("plans")
-        .select(
-          "id,title,published_at,plan_versions!plans_current_version_tenant_fkey(id,version_no,assistant_state,plan_days(id,label,day_index,meals(id,label,position,suggested_time,meal_items(id,description,grams,nutrient_snapshot,meal_item_substitutions(id,description,grams,unit,professional_note,is_active)))))",
-        )
-        .eq("patient_id", patient.id)
-        .in("status", ["published", "scheduled"])
-        .order("published_at", { ascending: false }),
+    setLoadError("");
+    const p = await supabase
+      .from("plans")
+      .select(
+        "id,title,published_at,plan_versions!plans_current_version_tenant_fkey(id,version_no,assistant_state,plan_days(id,label,day_index,meals(id,label,position,suggested_time,meal_items(id,description,grams,nutrient_snapshot,meal_item_substitutions(id,description,grams,unit,professional_note,is_active)))))",
+      )
+      .eq("patient_id", patient.id)
+      .in("status", ["published", "scheduled"])
+      .order("published_at", { ascending: false });
+    if (p.error) setLoadError(`Não foi possível carregar seu plano: ${p.error.message}`);
+    else setPlans((p.data ?? []) as unknown as Plan[]);
+    setLoading(false);
+  }, [patient.id]);
+
+  const loadSupport = useCallback(async () => {
+    const [a, r, i, g, w] = await Promise.all([
       supabase
         .from("appointments")
         .select("id,starts_at,status,modality")
@@ -145,20 +175,84 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
         .select("id,status,form_template_versions(title,form_fields(id,label,field_type,required,position)),form_responses(values)")
         .eq("patient_id", patient.id)
         .order("assigned_at", { ascending: false }),
-      supabase.rpc("get_patient_drive_status", { target_patient_id: patient.id }),
+      supabase.from("patient_goals").select("id,kind,title,target_value,target_unit").eq("patient_id", patient.id).eq("active", true).order("created_at", { ascending: false }),
+      supabase.from("patient_water_logs").select("amount_ml,occurred_on").eq("patient_id", patient.id).eq("occurred_on", new Date().toISOString().slice(0, 10)).order("created_at", { ascending: false }),
     ]);
-    const first = p.error ?? a.error ?? r.error ?? i.error ?? d.error;
-    if (first)
-      setError(`Não foi possível carregar seus dados: ${first.message}`);
-    else {
-      setPlans((p.data ?? []) as unknown as Plan[]);
-      setAppointments(a.data ?? []);
-      setRequests(r.data ?? []);
-      setIntakeAssignments((i.data ?? []) as unknown as IntakeAssignment[]);
-      setDrive(((d.data as DriveStatus[] | null)?.[0]) ?? { status: "missing", can_upload_photos: false });
-    }
-    setLoading(false);
+    if (a.error) setOptionalError("appointments", a.error.message);
+    else { setAppointments(a.data ?? []); setOptionalError("appointments"); }
+    if (r.error) setOptionalError("requests", r.error.message);
+    else { setRequests(r.data ?? []); setOptionalError("requests"); }
+    if (i.error) setOptionalError("intake", i.error.message);
+    else { setIntakeAssignments((i.data ?? []) as unknown as IntakeAssignment[]); setOptionalError("intake"); }
+    if (g.error) setOptionalError("goals", g.error.message);
+    else { setGoals((g.data ?? []) as PatientGoal[]); setOptionalError("goals"); }
+    if (w.error) setOptionalError("water", w.error.message);
+    else { setWater(((w.data ?? []) as WaterLog[])[0] ?? null); setOptionalError("water"); }
   }, [patient.id]);
+
+  const retrySupport = useCallback(async (module: "appointments" | "requests" | "intake" | "goals" | "water") => {
+    if (module === "appointments") {
+      const result = await supabase.from("appointments").select("id,starts_at,status,modality").eq("patient_id", patient.id).order("starts_at", { ascending: false });
+      if (result.error) setOptionalError(module, result.error.message); else { setAppointments(result.data ?? []); setOptionalError(module); }
+    } else if (module === "requests") {
+      const result = await supabase.from("substitution_requests").select("id,substitution_id,status,professional_note").eq("patient_id", patient.id).order("created_at", { ascending: false });
+      if (result.error) setOptionalError(module, result.error.message); else { setRequests(result.data ?? []); setOptionalError(module); }
+    } else if (module === "intake") {
+      const result = await supabase.from("form_assignments").select("id,status,form_template_versions(title,form_fields(id,label,field_type,required,position)),form_responses(values)").eq("patient_id", patient.id).order("assigned_at", { ascending: false });
+      if (result.error) setOptionalError(module, result.error.message); else { setIntakeAssignments((result.data ?? []) as unknown as IntakeAssignment[]); setOptionalError(module); }
+    } else if (module === "goals") {
+      const result = await supabase.from("patient_goals").select("id,kind,title,target_value,target_unit").eq("patient_id", patient.id).eq("active", true).order("created_at", { ascending: false });
+      if (result.error) setOptionalError(module, result.error.message); else { setGoals((result.data ?? []) as PatientGoal[]); setOptionalError(module); }
+    } else {
+      const result = await supabase.from("patient_water_logs").select("amount_ml,occurred_on").eq("patient_id", patient.id).eq("occurred_on", new Date().toISOString().slice(0, 10)).order("created_at", { ascending: false });
+      if (result.error) setOptionalError(module, result.error.message); else { setWater(((result.data ?? []) as WaterLog[])[0] ?? null); setOptionalError(module); }
+    }
+  }, [patient.id]);
+
+  const loadBrand = useCallback(async () => {
+    const result = await supabase.from("organization_branding").select("public_name,primary_color,logo_url").eq("organization_id", patient.organization_id).order("updated_at", { ascending: false });
+    if (result.error) {
+      setBrand(null);
+      setOptionalError("branding", result.error.message);
+    } else {
+      setBrand(((result.data ?? []) as Brand[])[0] ?? null);
+      setOptionalError("branding");
+    }
+  }, [patient.organization_id]);
+
+  const loadDrive = useCallback(async () => {
+    const result = await supabase.rpc("get_patient_drive_status", { target_patient_id: patient.id });
+    if (result.error) {
+      setDrive({ status: "missing", can_upload_photos: false });
+      setOptionalError("drive", result.error.message);
+    } else {
+      setDrive(((result.data as DriveStatus[] | null)?.[0]) ?? { status: "missing", can_upload_photos: false });
+      setOptionalError("drive");
+    }
+  }, [patient.id]);
+
+  const loadDeliveries = useCallback(async () => {
+    const result = await supabase.from("patient_content_deliveries").select("id,delivered_at,snapshot").eq("patient_id", patient.id).order("delivered_at", { ascending: false });
+    if (result.error) setOptionalError("content", result.error.message);
+    else {
+      setDeliveries((result.data ?? []) as ContentDelivery[]);
+      setOptionalError("content");
+    }
+  }, [patient.id]);
+
+  const loadWeeklySummary = useCallback(async () => {
+    const result = await supabase.rpc("get_patient_weekly_summary", { target_patient_id: patient.id, target_days: 7 });
+    if (result.error) setOptionalError("summary", result.error.message);
+    else {
+      setWeeklySummary((result.data as WeeklySummary | null) ?? null);
+      setOptionalError("summary");
+    }
+  }, [patient.id]);
+
+  const load = useCallback(async () => {
+    await Promise.all([loadPlan(), loadSupport(), loadBrand(), loadDrive(), loadDeliveries(), loadWeeklySummary()]);
+  }, [loadPlan, loadSupport, loadBrand, loadDrive, loadDeliveries, loadWeeklySummary]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -200,13 +294,32 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
     if (error) setError(error.message);
     else await load();
   }
+  async function saveWater(amount:number) {
+    if (!Number.isFinite(amount) || amount < 1 || amount > 10000) return setError("Informe entre 1 e 10.000 ml de água.");
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return setError("Sua sessão expirou.");
+    const { error } = await supabase.from("patient_water_logs").upsert({ organization_id: patient.organization_id, patient_id: patient.id, occurred_on: new Date().toISOString().slice(0, 10), amount_ml: amount, created_by: data.session.user.id }, { onConflict: "patient_id,occurred_on" });
+    if (error) setError(error.message); else await load();
+  }
+  const moduleNotices: { module: OptionalModule; label: string; retry: () => Promise<void> }[] = [
+    { module: "appointments", label: "a agenda", retry: () => retrySupport("appointments") },
+    { module: "requests", label: "as solicitações de troca", retry: () => retrySupport("requests") },
+    { module: "intake", label: "a pré-consulta", retry: () => retrySupport("intake") },
+    { module: "goals", label: "as metas", retry: () => retrySupport("goals") },
+    { module: "water", label: "o registro de água", retry: () => retrySupport("water") },
+    { module: "branding", label: "a marca da clínica", retry: loadBrand },
+    { module: "content", label: "as orientações recebidas", retry: loadDeliveries },
+    { module: "summary", label: "o resumo semanal", retry: loadWeeklySummary },
+    { module: "drive", label: "o envio de fotos", retry: loadDrive },
+    { module: "image", label: "a imagem da marca", retry: async () => { setBrandImageFailed(false); setBrandImageRetry((value) => value + 1); } },
+  ];
   return (
-    <main className="patient-portal">
+    <main className="patient-portal" style={{'--clinic-primary':brand?.primary_color ?? '#3e6b5c'} as CSSProperties}>
       <header>
         <div className="brand">
-          <span>BS</span>
+          {brand?.logo_url && !brandImageFailed ? <img key={brandImageRetry} src={brand.logo_url} alt={`Logo ${brand.public_name}`} onLoad={() => setOptionalError("image")} onError={() => { setBrandImageFailed(true); setOptionalError("image", "A imagem não respondeu."); }}/>:<span>BS</span>}
           <div>
-            <strong>BSNutri</strong>
+            <strong>{brand?.public_name ?? 'BSNutri'}</strong>
             <small>Meu plano alimentar</small>
           </div>
         </div>
@@ -222,6 +335,14 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
           Consulte seu plano, registre sua experiência e solicite consultas.
         </p>
       </section>
+      {!loading && <TodayHome plans={plans} goals={goals} water={water} weeklySummary={weeklySummary} appointments={appointments} saveWater={saveWater}/>}
+      {loadError && <div className="notice error" role="alert"><span>{loadError}</span><button className="secondary" type="button" onClick={() => void loadPlan()}><RefreshCw />Tentar novamente</button></div>}
+      {moduleNotices.filter(({ module }) => optionalErrors[module]).map(({ module, label, retry }) => (
+        <div className="notice" role="status" key={module}>
+          <span>Não foi possível carregar {label}. {optionalErrors[module]}</span>
+          <button className="secondary" type="button" onClick={() => void retry()}><RefreshCw />Tentar novamente</button>
+        </div>
+      ))}
       {error && (
         <div className="notice error" role="alert">
           {error}
@@ -334,8 +455,17 @@ export function PatientPortal({ patient }: { patient: PatientAccess }) {
           </button>
         </div>
       )}
+      {deliveries.length > 0 && <section className="panel portal-content"><h2>Orientações recebidas</h2>{deliveries.map(delivery=><article key={delivery.id}><small>{delivery.snapshot.content_type ?? "Orientação"} · {new Date(delivery.delivered_at).toLocaleDateString("pt-BR")}</small><h3>{delivery.snapshot.title ?? "Material da clínica"}</h3><p>{delivery.snapshot.body}</p></article>)}</section>}
     </main>
   );
+}
+
+function TodayHome({ plans, goals, water, weeklySummary, appointments, saveWater }: { plans:Plan[]; goals:PatientGoal[]; water:WaterLog|null; weeklySummary:WeeklySummary|null; appointments:Appointment[]; saveWater:(amount:number)=>Promise<void> }) {
+  const [amount,setAmount]=useState(water?.amount_ml ?? 0)
+  useEffect(()=>setAmount(water?.amount_ml ?? 0),[water?.amount_ml])
+  const meals=plans[0]?.plan_versions?.plan_days.flatMap(day=>day.meals).sort((a,b)=>(a.suggested_time??'99:99').localeCompare(b.suggested_time??'99:99')).slice(0,3)??[]
+  const appointment=appointments.find(item=>new Date(item.starts_at)>=new Date())
+  return <section className="portal-today panel" aria-label="Resumo de hoje"><header><div><small>Hoje</small><h2>Seu próximo passo</h2></div>{appointment&&<time>Próxima consulta: {new Date(appointment.starts_at).toLocaleDateString('pt-BR')}</time>}</header><div className="today-meals"><div><h3>Refeições previstas</h3>{meals.length?meals.map(meal=><p key={meal.id}><strong>{meal.suggested_time?.slice(0,5) ?? 'Livre'}</strong> · {meal.label}</p>):<p className="muted">Seu plano aparecerá aqui quando for publicado.</p>}</div><form onSubmit={event=>{event.preventDefault();void saveWater(amount)}}><h3>Água de hoje</h3><label>ml registrados<input aria-label="Água de hoje em ml" type="number" min="1" max="10000" step="50" value={amount} onChange={event=>setAmount(Number(event.target.value))}/></label><button className="secondary">Salvar água</button></form></div><div className="today-goals"><div><strong>{goals.length}</strong><span>metas ativas</span></div><div><strong>{weeklySummary?.completed_meals ?? 0}</strong><span>refeições registradas na semana</span></div><div><strong>{weeklySummary?.water_ml ?? 0} ml</strong><span>água registrada na semana</span></div></div>{goals.length>0&&<ul className="goal-list">{goals.map(goal=><li key={goal.id}>{goal.title}{goal.target_value!==null&&<> · {goal.target_value} {goal.target_unit}</>}</li>)}</ul>}</section>
 }
 
 function ShoppingList({ patientId }: { patientId: string }) {
@@ -381,32 +511,32 @@ function ShoppingList({ patientId }: { patientId: string }) {
       </header>
       {message && <p className="form-message">{message}</p>}
       <div className="shopping-list">
-        {items.map((item) => (
-          <label
-            className={checked.has(item.item_key) ? "checked" : ""}
-            key={item.item_key}
-          >
-            <input
-              type="checkbox"
-              checked={checked.has(item.item_key)}
-              onChange={() =>
-                setChecked((all) => {
-                  const next = new Set(all);
-                  if (next.has(item.item_key)) next.delete(item.item_key);
-                  else next.add(item.item_key);
-                  return next;
-                })
-              }
-            />
-            <span>
-              <strong>{item.description}</strong>
-              <small>
-                {Number(item.total_grams).toLocaleString("pt-BR")} g
-              </small>
-            </span>
-            {checked.has(item.item_key) && <Check />}
-          </label>
-        ))}
+        {items.map((item, index) => {
+          const key = item.item_key || `${item.description}-${index}`;
+          return (
+            <label className={checked.has(key) ? "checked" : ""} key={key}>
+              <input
+                type="checkbox"
+                checked={checked.has(key)}
+                onChange={() =>
+                  setChecked((all) => {
+                    const next = new Set(all);
+                    if (next.has(key)) next.delete(key);
+                    else next.add(key);
+                    return next;
+                  })
+                }
+              />
+              <span>
+                <strong>{item.description}</strong>
+                <small>
+                  {Number(item.total_grams).toLocaleString("pt-BR")} g
+                </small>
+              </span>
+              {checked.has(key) && <Check />}
+            </label>
+          );
+        })}
       </div>
     </section>
   );
