@@ -11,76 +11,40 @@ import { supabase } from "./lib/supabase";
 import { sanitizePlanVisibility, type PlanVisibility } from "./lib/planAssistant";
 import { createDriveClient, diaryPhotoFileName } from "./lib/driveClient";
 import { printClinicalDocument } from "./lib/clinicalExport";
+import type { Database } from "./lib/database.types";
 
-type PatientAccess = {
-  id: string;
-  full_name: string;
-  anonymous_code: string;
-  organization_id: string;
-  professional_id: string;
-};
-type Substitution = {
-  id: string;
-  description: string;
-  grams: number;
-  unit: string;
-  professional_note: string | null;
-};
-type Item = {
-  id: string;
-  description: string;
-  grams: number;
-  nutrient_snapshot: { food_name?: string; preparation_state?: string; energyKcal?: number; proteinG?: number; carbohydrateG?: number; fatG?: number; nutrients?: { code: string; amount: number }[] } | null;
+type Row<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
+
+type PatientAccess = Pick<Row<"patients">, "id" | "full_name" | "anonymous_code" | "organization_id" | "professional_id">;
+type Substitution = Pick<Row<"meal_item_substitutions">, "id" | "description" | "grams" | "unit" | "professional_note">;
+type NutrientSnapshot = { food_name?: string; preparation_state?: string; energyKcal?: number; proteinG?: number; carbohydrateG?: number; fatG?: number; nutrients?: { code: string; amount: number }[] } | null;
+type Item = Pick<Row<"meal_items">, "id" | "description" | "grams"> & {
+  nutrient_snapshot: NutrientSnapshot;
   meal_item_substitutions: Substitution[];
 };
-type Meal = {
-  id: string;
-  label: string;
-  position: number;
-  suggested_time: string | null;
-  meal_items: Item[];
-};
-type Day = { id: string; label: string; day_index: number; meals: Meal[] };
-type Version = { id: string; version_no: number; assistant_state?: unknown; plan_days: Day[] };
-type Plan = {
-  id: string;
-  title: string;
-  published_at: string | null;
-  plan_versions: Version | null;
-};
-type Appointment = {
-  id: string;
-  starts_at: string;
-  status: string;
-  modality: string;
-};
-type SwapRequest = {
-  id: string;
-  substitution_id: string;
-  meal_item_id: string;
-  plan_version_id: string;
-  status: string;
-  professional_note: string | null;
-};
-type ShoppingItem = {
-  item_key: string;
-  description: string;
-  total_grams: number;
-  occurrences: number;
-};
-type IntakeField = { id: string; label: string; field_type: string; required: boolean; position: number };
-type IntakeAssignment = {
-  id: string;
-  status: string;
+type Meal = Pick<Row<"meals">, "id" | "label" | "position" | "suggested_time"> & { meal_items: Item[] };
+type Day = Pick<Row<"plan_days">, "id" | "label" | "day_index"> & { meals: Meal[] };
+type Version = Pick<Row<"plan_versions">, "id" | "version_no" | "assistant_state"> & { plan_days: Day[] };
+type Plan = Pick<Row<"plans">, "id" | "title" | "published_at"> & { plan_versions: Version | null };
+type Appointment = Pick<Row<"appointments">, "id" | "starts_at" | "status" | "modality">;
+type SwapRequest = Pick<
+  Row<"substitution_requests">,
+  "id" | "substitution_id" | "meal_item_id" | "plan_version_id" | "status" | "professional_note"
+>;
+type ShoppingItem = { item_key: string; description: string; total_grams: number; occurrences: number };
+type IntakeField = Pick<Row<"form_fields">, "id" | "label" | "field_type" | "required" | "position">;
+type IntakeAssignment = Pick<Row<"form_assignments">, "id" | "status"> & {
   form_template_versions: { title: string; form_fields: IntakeField[] } | null;
   form_responses: { values: Record<string, string> }[];
 };
 type DriveStatus = { status: "missing" | "connected"; can_upload_photos: boolean };
-type PatientGoal = { id:string; kind:string; title:string; target_value:number|null; target_unit:string|null };
-type WaterLog = { amount_ml:number; occurred_on:string };
-type ContentDelivery = { id:string; delivered_at:string; snapshot:{ title?:string; body?:string; content_type?:string } };
-type WeeklySummary = { period_days:number; meal_checkins:number; completed_meals:number; water_ml:number; active_goals:number };
-type Brand = { public_name:string; primary_color:string; logo_url:string|null };
+type PatientGoal = Pick<Row<"patient_goals">, "id" | "kind" | "title" | "target_value" | "target_unit">;
+type WaterLog = Pick<Row<"patient_water_logs">, "amount_ml" | "occurred_on">;
+type ContentDelivery = Pick<Row<"patient_content_deliveries">, "id" | "delivered_at"> & {
+  snapshot: { title?: string; body?: string; content_type?: string };
+};
+type WeeklySummary = { period_days: number; meal_checkins: number; completed_meals: number; water_ml: number; active_goals: number };
+type Brand = Pick<Row<"organization_branding">, "public_name" | "primary_color" | "logo_url">;
 type OptionalModule = "appointments" | "requests" | "intake" | "goals" | "water" | "branding" | "content" | "drive" | "summary" | "image";
 const driveClient = createDriveClient();
 type NutritionSummary = { energyKcal: number; proteinG: number; carbohydrateG: number; fatG: number };
