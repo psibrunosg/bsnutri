@@ -8,6 +8,7 @@
 
 **Project:** BSNutri
 **Generated:** 2026-07-12 23:25:52
+**Palette updated to match production:** 2026-07-28
 **Category:** Healthcare App
 **Design Dials:** Variance 4/10 (Balanced / Modern) | Motion 3/10 (Subtle) | Density 6/10 (Standard)
 
@@ -19,18 +20,20 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#0891B2` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#22D3EE` | `--color-secondary` |
-| Accent/CTA | `#059669` | `--color-accent` |
-| Background | `#ECFEFF` | `--color-background` |
-| Foreground | `#164E63` | `--color-foreground` |
-| Muted | `#E8F1F6` | `--color-muted` |
-| Border | `#A5F3FC` | `--color-border` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| Ring | `#0891B2` | `--color-ring` |
+| Primary | `#3E6B5C` | `--primary` |
+| Primary Dark | `#2F5C50` | `--primary-dark` |
+| On Primary | `#FFFFFF` | (sem variável, hardcoded em `.primary`) |
+| Accent/CTA | `#62824D` | (sem variável dedicada; usado como hex direto em componentes de destaque — ver nota abaixo) |
+| Background | `#F7F3EE` | `--paper` |
+| Foreground | `#2E2E2E` | `--ink` |
+| Muted text | `#527382` | (sem variável; hardcoded em toda a UI — candidato a virar `--muted-text` numa limpeza futura) |
+| Surface | `#FFFDF8` | `--surface` |
+| Border | `#C8D4C2` | `--border` |
+| Sage | `#A8B8A1` | `--sage` |
+| Destructive | `#A31515` | `--bs-danger-fg` |
+| Focus Ring | `rgb(62 107 92 / .32)` | `--focus-ring` |
 
-**Color Notes:** Calm cyan + health green
+**Nota:** esta tabela documenta a paleta verde-oliva/bege realmente em produção (tema "Clínica BS", ver `src/App.css` a partir da linha 54), não a paleta cyan/verde-saúde original gerada por este skill. `--accent` e `--muted` (nomes de variável) foram removidos do CSS em 2026-07-28 por não terem consumidor — os papéis "Accent" e "Muted text" acima existem visualmente mas hoje são hex direto, não variável.
 
 ### Typography
 
