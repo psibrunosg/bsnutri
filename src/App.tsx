@@ -8,6 +8,7 @@ import { ContentLibrary } from './ContentLibrary'
 import { PatientPortal } from './PatientPortal'
 import { CareWorkspace } from './CareWorkspace'
 import { SettingsWorkspace } from './SettingsWorkspace'
+import { useAppRoute } from './lib/useAppRoute'
 import './App.css'
 import './AuthIllustration.css'
 
@@ -137,10 +138,11 @@ function Dashboard({ session, workspace }: { session: Session; workspace: Worksp
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [checkins, setCheckins] = useState<Checkin[]>([])
-  const [page, setPage] = useState<'patients' | 'nutrition' | 'care' | 'content' | 'settings'>(isReceptionist ? 'care' : 'patients')
+  const [route, navigateRoute] = useAppRoute(isReceptionist ? 'care' : 'patients')
+  const page = route.page
+  const selected = patients.find(p => p.id === route.patientId) ?? null
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState<Patient | null>(null)
   const [menu, setMenu] = useState(false)
   const [error, setError] = useState('')
 
@@ -170,11 +172,8 @@ function Dashboard({ session, workspace }: { session: Session; workspace: Worksp
 
   useEffect(() => { void load() }, [load])
   useEffect(() => {
-    if (isReceptionist && page !== 'care') {
-      setPage('care')
-      setSelected(null)
-    }
-  }, [isReceptionist, page])
+    if (isReceptionist && page !== 'care') navigateRoute({ page: 'care', patientId: null }, { replace: true })
+  }, [isReceptionist, page, navigateRoute])
 
   async function addPatient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -213,12 +212,12 @@ function Dashboard({ session, workspace }: { session: Session; workspace: Worksp
   const activePatients = patients.filter(patient => patient.status === 'active').length
   const withEmail = patients.filter(patient => Boolean(patient.email)).length
 
-  return <div className="app-shell"><aside className={menu ? 'sidebar open' : 'sidebar'}><div className="brand inverse"><span>BS</span><strong>BSNutri</strong><button aria-label="Fechar menu" onClick={() => setMenu(false)}><X/></button></div><nav>{!isReceptionist && <button className={page === 'patients' ? 'active' : ''} onClick={() => { setPage('patients'); setSelected(null); setMenu(false) }}><Users/>Pacientes</button>}{!isReceptionist && <button className={page === 'nutrition' ? 'active' : ''} onClick={() => { setPage('nutrition'); setSelected(null); setMenu(false) }}><Utensils/>Nutrição e planos</button>}{!isReceptionist && <button className={page === 'content' ? 'active' : ''} onClick={() => { setPage('content'); setSelected(null); setMenu(false) }}><ListChecks/>Biblioteca</button>}{!isReceptionist && <button className={page === 'settings' ? 'active' : ''} onClick={() => { setPage('settings'); setSelected(null); setMenu(false) }}><Settings/>Configurações</button>}<button className={page === 'care' ? 'active' : ''} onClick={() => { setPage('care'); setSelected(null); setMenu(false) }}><CalendarDays/>Agenda e adesão</button></nav><button className="logout" onClick={() => supabase.auth.signOut()}><LogOut/>Sair</button></aside>
+  return <div className="app-shell"><aside className={menu ? 'sidebar open' : 'sidebar'}><div className="brand inverse"><span>BS</span><strong>BSNutri</strong><button aria-label="Fechar menu" onClick={() => setMenu(false)}><X/></button></div><nav>{!isReceptionist && <button className={page === 'patients' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'patients', patientId: null }); setMenu(false) }}><Users/>Pacientes</button>}{!isReceptionist && <button className={page === 'nutrition' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'nutrition', patientId: null }); setMenu(false) }}><Utensils/>Nutrição e planos</button>}{!isReceptionist && <button className={page === 'content' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'content', patientId: null }); setMenu(false) }}><ListChecks/>Biblioteca</button>}{!isReceptionist && <button className={page === 'settings' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'settings', patientId: null }); setMenu(false) }}><Settings/>Configurações</button>}<button className={page === 'care' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'care', patientId: null }); setMenu(false) }}><CalendarDays/>Agenda e adesão</button></nav><button className="logout" onClick={() => supabase.auth.signOut()}><LogOut/>Sair</button></aside>
     <main className="content"><header><button className="menu-button" aria-label="Abrir menu" onClick={() => setMenu(true)}><Menu/></button><div><small>{workspace.organizations?.name}</small><h1>{selected ? 'Prontuário nutricional' : page === 'nutrition' ? 'Nutrição e planos' : page === 'care' ? 'Agenda e adesão' : page === 'content' ? 'Biblioteca profissional' : page === 'settings' ? 'Configurações' : 'Pacientes'}</h1></div></header>
-      {page === 'nutrition' && !isReceptionist ? <NutritionWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : page === 'content' && !isReceptionist ? <ContentLibrary session={session} organizationId={workspace.organization_id} patients={patients} canEditBrand={workspace.role==='owner'||workspace.role==='admin'}/> : page === 'settings' && !isReceptionist ? <SettingsWorkspace organizationId={workspace.organization_id}/> : page === 'care' ? <CareWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : selected && !isReceptionist ? <PatientDetail patient={selected} session={session} workspace={workspace} onBack={() => setSelected(null)}/> : !isReceptionist ? <>
+      {page === 'nutrition' && !isReceptionist ? <NutritionWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : page === 'content' && !isReceptionist ? <ContentLibrary session={session} organizationId={workspace.organization_id} patients={patients} canEditBrand={workspace.role==='owner'||workspace.role==='admin'}/> : page === 'settings' && !isReceptionist ? <SettingsWorkspace organizationId={workspace.organization_id}/> : page === 'care' ? <CareWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : selected && !isReceptionist ? <PatientDetail patient={selected} session={session} workspace={workspace} onBack={() => navigateRoute({ page: 'patients', patientId: null })}/> : !isReceptionist ? <>
       <DashboardSummary total={patients.length} active={activePatients} withEmail={withEmail} shown={shown.length} query={query}/>
       <TodayPanel appointments={appointments} alerts={alerts} checkins={checkins} onReviewAppointment={reviewAppointment} onAlertAction={acknowledgeAlert}/>
-      <PatientDirectory patients={shown} query={query} setQuery={setQuery} onSelect={setSelected} onCreate={() => setOpen(true)} error={error} filteredLabel={`${shown.length} paciente${shown.length === 1 ? '' : 's'}`}/>
+      <PatientDirectory patients={shown} query={query} setQuery={setQuery} onSelect={patient => navigateRoute({ page: 'patients', patientId: patient.id })} onCreate={() => setOpen(true)} error={error} filteredLabel={`${shown.length} paciente${shown.length === 1 ? '' : 's'}`}/>
     </> : null}
     </main><PatientCreateModal open={open && !isReceptionist} onClose={() => setOpen(false)} onSubmit={addPatient}/></div>
 }
