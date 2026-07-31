@@ -172,7 +172,7 @@ function Dashboard({ session, workspace }: { session: Session; workspace: Worksp
 
   useEffect(() => { void load() }, [load])
   useEffect(() => {
-    if (isReceptionist && page !== 'care') navigateRoute({ page: 'care', patientId: null })
+    if (isReceptionist && page !== 'care') navigateRoute({ page: 'care', patientId: null }, { replace: true })
   }, [isReceptionist, page, navigateRoute])
 
   async function addPatient(event: FormEvent<HTMLFormElement>) {

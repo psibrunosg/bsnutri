@@ -29,6 +29,15 @@ describe('useAppRoute', () => {
     expect(window.location.search).toBe('?page=care')
   })
 
+  it('navigate com replace:true substitui a entrada do histórico sem empilhar', () => {
+    const { result } = renderHook(() => useAppRoute('patients'))
+    const lengthBefore = window.history.length
+    act(() => result.current[1]({ page: 'care', patientId: null }, { replace: true }))
+    expect(result.current[0]).toEqual({ page: 'care', patientId: null })
+    expect(window.location.search).toBe('?page=care')
+    expect(window.history.length).toBe(lengthBefore)
+  })
+
   it('popstate (botão voltar) atualiza o estado a partir da URL', () => {
     const { result } = renderHook(() => useAppRoute('patients'))
     act(() => result.current[1]({ page: 'nutrition', patientId: null }))

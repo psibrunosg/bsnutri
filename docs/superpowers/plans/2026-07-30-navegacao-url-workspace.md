@@ -342,7 +342,7 @@ git commit -m "feat: navegar pelo menu e pelo paciente selecionado via URL"
 Run: `npm run dev`
 
 Roteiro:
-1. Entrar como profissional, confirmar que a URL vira `?page=patients`.
+1. Entrar como profissional, confirmar que a URL permanece como estava (ex.: `/`) até a primeira navegação — o hook só escreve na URL dentro de `navigate`, não no mount.
 2. Clicar em "Nutrição e planos", confirmar `?page=nutrition`.
 3. Abrir um paciente na lista de Pacientes, confirmar `?page=patients&patient=<id>`.
 4. Clicar em "Voltar para pacientes" dentro do prontuário, confirmar que o parâmetro `patient` some da URL.
