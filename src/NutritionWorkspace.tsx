@@ -28,6 +28,20 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
   const autosaveKey=`bsnutri:plan-draft:${organizationId}`
   const [tab,setTab]=useState<'catalog'|'plan'>('catalog')
   const [days,setDays]=useState<EditorDay[]>([initialDay()]),[activeDay,setActiveDay]=useState(0)
+
+useEffect(() => {
+  const hash = window.location.hash.slice(1);
+  if (hash === 'plan' || hash === 'catalog') {
+    setTab(hash);
+  }
+}, []);
+
+useEffect(() => {
+  if (tab === 'plan' || tab === 'catalog') {
+    const newUrl = window.location.pathname + (window.location.search ? '&' : '?') + 'tab=' + tab;
+    window.history.replaceState(null, '', newUrl);
+  }
+}, [tab]);
   const [baselineDays,setBaselineDays]=useState<EditorDay[]|null>(null)
   const [drafts,setDrafts]=useState<DraftSummary[]>([]),[templates,setTemplates]=useState<PlanTemplate[]>([]),[loadedDraft,setLoadedDraft]=useState<string|null>(null),[loadingDrafts,setLoadingDrafts]=useState(true)
   const [loadedVersion,setLoadedVersion]=useState(''),[planStatus,setPlanStatus]=useState('draft'),[locked,setLocked]=useState(false)
