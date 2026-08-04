@@ -67,6 +67,13 @@ export function roundNutrition(value: number, decimals = 2): number {
   return Math.round((value + Number.EPSILON) * factor) / factor
 }
 
+/** g de um macronutriente por kg de peso corporal; null se não há peso cadastrado. */
+export function gramsPerKg(grams: number, weightKg: number | null): number | null {
+  assertNonNegative(grams, 'grams')
+  if (weightKg === null || weightKg <= 0) return null
+  return roundNutrition(grams / weightKg, 2)
+}
+
 export function nutrientsForPortion(
   nutrientsPer100g: Nutrients,
   grams: number,

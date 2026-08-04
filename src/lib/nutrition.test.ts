@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateTargetProgress,
   emptyNutrients,
+  gramsPerKg,
   nutrientsForPortion,
   roundNutrition,
   sumNutrients,
@@ -65,5 +66,20 @@ describe('nutrition engine', () => {
   it('rejects invalid quantities and treats a zero target explicitly', () => {
     expect(() => nutrientsForPortion(rice100g, -1)).toThrow('grams must not be negative')
     expect(calculateTargetProgress(emptyNutrients(), { sodiumMg: 0 }).sodiumMg?.percentage).toBe(0)
+  })
+})
+
+describe('gramsPerKg', () => {
+  it('divide gramas pelo peso em kg com 2 casas decimais', () => {
+    expect(gramsPerKg(145.42, 93)).toBe(1.56)
+  })
+
+  it('retorna null quando não há peso cadastrado', () => {
+    expect(gramsPerKg(100, null)).toBeNull()
+  })
+
+  it('retorna null quando o peso é zero ou negativo', () => {
+    expect(gramsPerKg(100, 0)).toBeNull()
+    expect(gramsPerKg(100, -5)).toBeNull()
   })
 })
