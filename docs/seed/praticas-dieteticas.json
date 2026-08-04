@@ -1,0 +1,342 @@
+{
+  "$comment": "Seed para plan_templates do BSNutri. Cada modelo segue a estrutura dimensions + rules das migrations 20260717160000 e 20260723190844. Valores baseados em NHLBI/DASH, PREDIMED/Mediterrânea, MIND (Morris 2015), ketogenic guidelines, vegan/vegetarian (Academy), paleo (Loren Cordain), Low Carb (Feinman 2015) e Guia Alimentar para a População Brasileira (2014). Revisar por nutricionista antes de uso clínico — alvos são referenciais populacionais, não prescrição individualizada.",
+  "models": [
+    {
+      "name": "Dieta Mediterrânea",
+      "objective": "Prevenção cardiovascular e saúde cardiometabólica",
+      "tags": ["mediterranean", "cardiovascular", "plant_forward"],
+      "scope": "organization",
+      "dimensions": {
+        "approaches": ["mediterranean"],
+        "objectives": ["cardiovascular_prevention", "cardiometabolic_health"],
+        "restrictions": [],
+        "preferences": ["plant_forward", "olive_oil", "fish", "legumes"],
+        "contexts": ["outpatient", "clinical", "prevention"]
+      },
+      "rules": {
+        "targets": {
+          "energy_kcal": {"notes": "Individualizado por gasto energético"},
+          "protein_pct": {"min": 15, "max": 20},
+          "carbohydrate_pct": {"min": 45, "max": 55},
+          "fat_pct": {"min": 25, "max": 35},
+          "saturated_fat_pct": {"max": 7},
+          "fiber_g": {"min": 25},
+          "sodium_mg": {"max": 2300},
+          "fish_servings_week": {"min": 2},
+          "olive_oil": "principal_fonte_gordura",
+          "red_meat_servings_month": {"max": 4}
+        },
+        "guidance": [
+          "Basear alimentação em alimentos in natura e minimamente processados de origem vegetal",
+          "Usar azeite de oliva extravirgem como principal gordura adicionada",
+          "Consumir peixe 2+ vezes por semana",
+          "Leguminosas (feijão, lentilha, grão-de-bico) 4+ vezes por semana",
+          "Frutas e vegetais em abundância, variando cores",
+          "Castanhas e sementes diariamente (30g)",
+          "Cereais integrais como base (arroz integral, aveia, pão integral)",
+          "Limitar carnes vermelhas a <4 vezes/mês",
+          "Vinho tinto opcional e moderado (até 1 taça/dia mulheres, 2 homens) se apropriado",
+          "Evitar ultraprocessados, açúcar refinado e gorduras saturadas em excesso"
+        ]
+      },
+      "evidence": "PREDIMED (2013): redução 30% eventos cardiovasculares major. Strong evidence — U.S. News Best Diets 2025 #1.",
+      "source": "PREDIMED; Estruch R et al. NEJM 2018.",
+      "food_csv": "mediterranea.csv"
+    },
+    {
+      "name": "Dieta DASH",
+      "objective": "Redução da pressão arterial e saúde cardiovascular",
+      "tags": ["dash", "hypertension", "low_sodium"],
+      "scope": "organization",
+      "dimensions": {
+        "approaches": ["dash"],
+        "objectives": ["hypertension_control", "cardiovascular_prevention"],
+        "restrictions": ["low_sodium"],
+        "preferences": ["fruits", "vegetables", "low_fat_dairy", "whole_grains"],
+        "contexts": ["outpatient", "clinical", "hypertension"]
+      },
+      "rules": {
+        "targets": {
+          "energy_kcal": {"notes": "Individualizado"},
+          "protein_pct": {"min": 18, "max": 20},
+          "carbohydrate_pct": {"min": 50, "max": 55},
+          "fat_pct": {"min": 25, "max": 30},
+          "saturated_fat_pct": {"max": 6},
+          "fiber_g": {"min": 30},
+          "sodium_mg": {"max": 2300, "lower_variant": 1500},
+          "potassium_mg": {"min": 4700},
+          "calcium_mg": {"min": 1250},
+          "magnesium_mg": {"min": 500},
+          "added_sugars_pct": {"max": 5}
+        },
+        "guidance": [
+          "Alvos base: 2000 kcal/dia, 2300mg sódio (versão baixa: 1500mg)",
+          "Grãos integrais 6-8 porções/dia (arroz integral, pão integral, aveia)",
+          "Frutas 4-5 porções/dia",
+          "Vegetais 4-5 porções/dia",
+          "Laticínios desnatados 2-3 porções/dia",
+          "Carnes magras 150g/dia (frango, peixe, cortes bovinos magros)",
+          "Castanhas, sementes e leguminosas 4-5 porções/semana",
+          "Gorduras e óleos 2-3 porções/dia (azeite, canola)",
+          "Doces <5 porções/semana",
+          "Reduzir sódio: evitar embutidos, enlatados com sal, fast food, ultraprocessados"
+        ]
+      },
+      "evidence": "DASH Trial (1997): redução 8-14 mmHg sistólica em 2 semanas. DASH-Sodium Trial: maior redução com 1500mg sódio.",
+      "source": "NHLBI; Appel LJ et al. NEJM 1997.",
+      "food_csv": "dash.csv"
+    },
+    {
+      "name": "Dieta MIND",
+      "objective": "Neuroproteção e redução de risco de demência",
+      "tags": ["mind", "neuroprotection", "brain_health"],
+      "scope": "organization",
+      "dimensions": {
+        "approaches": ["mind"],
+        "objectives": ["neuroprotection", "cognitive_health"],
+        "restrictions": [],
+        "preferences": ["leafy_greens", "berries", "nuts", "olive_oil", "fish"],
+        "contexts": ["outpatient", "prevention", "elderly"]
+      },
+      "rules": {
+        "targets": {
+          "energy_kcal": {"notes": "Individualizado"},
+          "protein_pct": {"min": 15, "max": 20},
+          "carbohydrate_pct": {"min": 45, "max": 55},
+          "fat_pct": {"min": 25, "max": 35},
+          "leafy_greens_servings_week": {"min": 6},
+          "berries_servings_week": {"min": 2},
+          "nuts_servings_week": {"min": 5},
+          "beans_servings_week": {"min": 4},
+          "whole_grains_servings_day": {"min": 3},
+          "poultry_meals_week": {"min": 2},
+          "fish_meals_week": {"min": 1},
+          "red_meat_servings_week": {"max": 3},
+          "cheese_servings_week": {"max": 1},
+          "butter_tablespoons_day": {"max": 1},
+          "fried_foods_servings_week": {"max": 1},
+          "pastries_sweets_servings_week": {"max": 4}
+        },
+        "guidance": [
+          "Combina Mediterrânea + DASH com foco em alimentos neuroprotetores",
+          "Vegetais folhosos verde-escuros 6+ porções/semana (couve, espinafre, rúcula, agrião)",
+          "Frutas vermelhas 2+ porções/semana (mirtilo, morango, amora, framboesa)",
+          "Castanhas 5+ porções/semana (30g cada)",
+          "Feijão/leguminosas 4+ refeições/semana",
+          "Cereais integrais 3+ porções/dia",
+          "Frango 2+ refeições/semana",
+          "Peixe 1+ refeição/semana",
+          "Azeite de oliva como principal gordura",
+          "Limitar carne vermelha <3/semana, queijo <1/semana, manteiga <1 colher/dia",
+          "Limitar frituras <1/semana, doces <4/semana"
+        ]
+      },
+      "evidence": "Morris MC et al. (2015): aderência reduz risco de Alzheimer em 53% (alta aderência).",
+      "source": "Morris MC et al. Alzheimer's Dement 2015.",
+      "food_csv": "mind.csv"
+    },
+    {
+      "name": "Dieta Cetogênica",
+      "objective": "Cetose nutricional — controle glicêmico em Diabetes tipo 2 selecionado e epilepsia",
+      "tags": ["ketogenic", "low_carb", "high_fat"],
+      "scope": "organization",
+      "dimensions": {
+        "approaches": ["ketogenic"],
+        "objectives": ["glycemic_control", "epilepsy_management", "short_term_weight_loss"],
+        "restrictions": ["very_low_carb"],
+        "preferences": ["high_fat", "moderate_protein"],
+        "contexts": ["outpatient", "clinical", "monitored"]
+      },
+      "rules": {
+        "targets": {
+          "energy_kcal": {"notes": "Individualizado"},
+          "protein_pct": {"min": 15, "max": 20},
+          "carbohydrate_g": {"max": 50},
+          "carbohydrate_pct": {"min": 5, "max": 10},
+          "fat_pct": {"min": 70, "max": 80},
+          "saturated_fat_pct": {"notes": "Preferir MCT e gorduras mono/poli-insaturadas"},
+          "fiber_g": {"min": 15, "notes": "De vegetais baixo carboidrato"},
+          "net_carbs_g": {"max": 30}
+        },
+        "guidance": [
+          "Cetose nutricional: 20-50g carboidrato/dia (líquidos: total - fibra)",
+          "Gordura 70-80% do VET (abacate, azeite, óleo de coco, castanhas, manteiga)",
+          "Proteína moderada 15-20% (carnes, ovos, peixe, frango)",
+          "Vegetais não amiláceos à vontade (folhosos, brócolis, abobrinha, couve-flor)",
+          "Evitar grãos, açúcar, tubérculos, frutas ricas em carboidrato, leguminosas",
+          "Frutas permitidas: abacate, frutas vermelhas em pequenas quantidades",
+          "Monitorar cetonas (beta-hidroxibutirato 0.5-3.0 mmol/L) e glicemia",
+          "Suplementar eletrólitos (sódio, potássio, magnésio) — risco de fluidez inicial",
+          "Acompanhar perfil lipídico (LDL pode aumentar; reconsiderar se LDL-C > 4.1 mmol/L)",
+          "Não indicado para gestantes, lactantes, distúrbios beta-oxidativos, sem supervisão",
+          "Reconsiderar em doença hepática/renal sem acompanhamento especializado"
+        ]
+      },
+      "evidence": "Feinman RD et al. (2015): benefícios glicêmicos curto prazo em DM2 selecionado. Evidência longa prazo mais fraca que Mediterrânea/DASH.",
+      "source": "Feinman RD et al. Nutrition 2015.",
+      "food_csv": "cetogenica.csv"
+    },
+    {
+      "name": "Dieta Low Carb",
+      "objective": "Redução moderada de carboidratos — controle glicêmico e perda de peso",
+      "tags": ["low_carb", "moderate_carb_restriction"],
+      "scope": "organization",
+      "dimensions": {
+        "approaches": ["low_carb"],
+        "objectives": ["glycemic_control", "weight_loss"],
+        "restrictions": ["reduced_carb"],
+        "preferences": ["protein", "healthy_fats", "non_starchy_vegetables"],
+        "contexts": ["outpatient", "clinical"]
+      },
+      "rules": {
+        "targets": {
+          "energy_kcal": {"notes": "Individualizado"},
+          "protein_pct": {"min": 20, "max": 30},
+          "carbohydrate_pct": {"min": 15, "max": 30},
+          "fat_pct": {"min": 40, "max": 55},
+          "carbohydrate_g": {"min": 50, "max": 130},
+          "fiber_g": {"min": 20}
+        },
+        "guidance": [
+          "50-130g de carboidrato/dia (20-30% VET)",
+          "Proteína 20-30% VET (carnes, peixes, ovos, laticínios, tofu)",
+          "Gorduras 40-55% VET (azeite, abacate, castanhas, óleo de coco moderado)",
+          "Vegetais não amiláceos à vontade (folhosos, brócolis, abobrinha, pepino)",
+          "Tubérculos (batata-doce, mandioca) em pequenas porções",
+          "Frutas com moderação (melancia, morango, maçã) — evitar sucos",
+          "Evitar açúcar, ultraprocessados, pães brancos, massas, refrigerante",
+          "Leguminosas permitidas em pequenas porções (feijão, lentilha)",
+          "Não requer cetose nem monitoração de cetonas",
+          "Aceitação e sustentabilidade a longo prazo geralmente melhores que cetogênica"
+        ]
+      },
+      "evidence": "Evidência moderada para controle glicêmico e perda de peso curto-médio prazo em DM2 selecionado.",
+      "source": "Feinman RD et al. Nutrition 2015; reversal studies.",
+      "food_csv": "low_carb.csv"
+    },
+    {
+      "name": "Dieta Vegana",
+      "objective": "Padrão 100% vegetal — ética/saúde/sustentabilidade",
+      "tags": ["vegan", "plant_based", "no_animal"],
+      "scope": "organization",
+      "dimensions": {
+        "approaches": ["vegan"],
+        "objectives": ["general_health", "cardiovascular_prevention", "ethical_environmental"],
+        "restrictions": ["no_meat", "no_dairy", "no_eggs", "no_honey", "no_animal_products"],
+        "preferences": ["whole_plant_foods"],
+        "contexts": ["outpatient", "lifestyle"]
+      },
+      "rules": {
+        "targets": {
+          "energy_kcal": {"notes": "Individualizado"},
+          "protein_pct": {"min": 12, "max": 18},
+          "carbohydrate_pct": {"min": 50, "max": 65},
+          "fat_pct": {"min": 20, "max": 35},
+          "fiber_g": {"min": 30},
+          "calcium_mg": {"min": 1000, "notes": "De vegetais/leite vegetal fortificado"},
+          "iron_mg": {"notes": "Vegetal não-heme; combinar com vitamina C"},
+          "vitamin_b12_mcg": {"min": 2.4, "notes": "Suplementação obrigatória"},
+          "vitamin_d": {"notes": "Suplementação se baixa exposição solar"},
+          "omega3_ala": {"notes": "Linhaça, chia, nozes"}
+        },
+        "guidance": [
+          "Exclui TODOS produtos de origem animal (carne, peixe, laticínios, ovos, mel)",
+          "Suplementar vitamina B12 obrigatoriamente (2.4 mcg/dia ou semanal)",
+          "Combinar fontes vegetais de ferro com vitamina C (limão, laranja, kiwi)",
+          "Cálcio: leite vegetal fortificado, couve, brócolis, tofu com cálcio, gergelim",
+          "Ômega-3: linhaça moída, chia, nozes (ALA) ou suplemento DHA/EPA de microalga",
+          "Combinar proteínas vegetais para aminoácidos completos (arroz + feijão)",
+          "Proteína: tofu, tempeh, leguminosas, quinoa, seitan, pasta de amendoim",
+          "Ferro: lentilha, feijão, tofu, espinafre, quinua, semente de abóbora",
+          "Zinco: castanhas, sementes, leguminosas, aveia",
+          "Iodo: sal iodado ou algas (monitorar excesso)",
+          "Evitar ultraprocessados veganos (hambúrguer vegetal, sorvetes vegan)",
+          "Atenção a gestantes e crianças — acompanhamento especializado"
+        ]
+      },
+      "evidence": "Academy of Nutrition and Dietetics (2016): dieta vegana bem planejada é saudável em todos os estágios de vida.",
+      "source": "Melina V et al. J Acad Nutr Diet 2016.",
+      "food_csv": "vegana.csv"
+    },
+    {
+      "name": "Dieta Paleolítica",
+      "objective": "Padrão ancestral — alimentos integrais pré-agricultura",
+      "tags": ["paleo", "ancestral"],
+      "scope": "organization",
+      "dimensions": {
+        "approaches": ["paleo"],
+        "objectives": ["general_health", "weight_loss", "metabolic_health"],
+        "restrictions": ["no_grains", "no_legumes", "no_dairy", "no_refined_sugar", "no_ultraprocessed"],
+        "preferences": ["lean_meat", "fish", "vegetables", "fruits", "nuts_seeds"],
+        "contexts": ["outpatient", "lifestyle"]
+      },
+      "rules": {
+        "targets": {
+          "energy_kcal": {"notes": "Individualizado"},
+          "protein_pct": {"min": 20, "max": 35},
+          "carbohydrate_pct": {"min": 20, "max": 40},
+          "fat_pct": {"min": 25, "max": 45},
+          "fiber_g": {"min": 25}
+        },
+        "guidance": [
+          "Permitido: carnes (preferencialmente magras), peixes, ovos, vegetais, frutas, castanhas, sementes, óleos saudáveis (azeite, óleo de coco moderado)",
+          "Exclui: grãos (trigo, arroz, milho, aveia), leguminosas (feijão, lentilha, soja), laticínios, açúcar refinado, sal adicionado, óleos vegetais refinados, ultraprocessados",
+          "Tubérculos (batata-doce) em moderação — batata branca frequentemente evitada",
+          "Carnes preferencialmente de pasto, frango caipira, peixe selvagem",
+          "Castanhas e sementes: castanha do Brasil, castanha de caju, amêndoa, noz, macadâmia",
+          "Frutas integrais (evitar sucos concentrados)",
+          "Não contar calorias nem macronutrientes rigidamente — foco em comida real",
+          "Suplementar vitamina D se baixa exposição solar",
+          "Atenção: restrição de cálcio (sem laticínios) e de alguns nutrientes — monitorar",
+          "Evidência de superioridade sobre Mediterrânea/DASH mais fraca"
+        ]
+      },
+      "evidence": "Evidência baixa-moderada. Melhora metabólica curto prazo vs dieta típica, mas sem superioridade clara vs padrões baseados em evidência forte.",
+      "source": "Loren Cordain; revisões 2015-2019.",
+      "food_csv": "paleo.csv"
+    },
+    {
+      "name": "Guia Alimentar para a População Brasileira",
+      "objective": "Diretriz oficial brasileira para alimentação adequada e saudável",
+      "tags": ["guia_br", "nova_classification", "population_guideline"],
+      "scope": "organization",
+      "dimensions": {
+        "approaches": ["guia_br"],
+        "objectives": ["health_promotion", "disease_prevention", "sustainability"],
+        "restrictions": ["limit_ultraprocessed"],
+        "preferences": ["in_natura", "minimally_processed", "regional", "seasonal"],
+        "contexts": ["outpatient", "public_health", "population"]
+      },
+      "rules": {
+        "targets": {
+          "energy_kcal": {"notes": "Individualizado; controle de peso como indicador"},
+          "protein_pct": {"min": 15, "max": 20},
+          "carbohydrate_pct": {"min": 50, "max": 60},
+          "fat_pct": {"min": 20, "max": 30},
+          "fiber_g": {"min": 25},
+          "ultraprocessed_pct": {"max": 10}
+        },
+        "guidance": [
+          "QUATRO CATEGORIAS NOVA:",
+          "1. Alimentos in natura ou minimamente processados: BASE da alimentação (>2/3 do prato)",
+          "2. Ingredientes culinários (óleos, gorduras, sal, açúcar): em PEQUENAS quantidades",
+          "3. Alimentos processados: com MODERAÇÃO (queijos, pães, conservas vegetais)",
+          "4. Alimentos ultraprocessados: EVITAR (refrigerantes, biscoitos recheados, salsicha, lasanha congelada, etc)",
+          "Preparar pratos com base em alimentos in natura/minimamente processados",
+          "Usar óleos, gorduras, sal e açúcar em pequenas quantidades ao temperar/cozinhar",
+          "Limitar alimentos processados como complemento, não base",
+          "Evitar ultraprocessados",
+          "Comer com regularidade e atenção, em ambientes apropriados, com companhia quando possível",
+          "Comprar em locais com variedade de in natura (feiras, mercados)",
+          "Desenvolver e partilhar habilidades culinárias",
+          "Planejar uso do tempo para alimentação",
+          "Preferir locais que servem refeições feitas na hora",
+          "Ser crítico a propaganda de alimentos comercial"
+        ]
+      },
+      "evidence": "Guia Alimentar para a População Brasileira (2014) — Ministério da Saúde. Referência oficial reconhecida internacionalmente.",
+      "source": "Ministério da Saúde; CFN reaffirmação 2024-2026.",
+      "food_csv": "guia_br.csv"
+    }
+  ]
+}

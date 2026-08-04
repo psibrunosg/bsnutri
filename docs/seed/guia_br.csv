@@ -1,0 +1,83 @@
+nome;preparo;energia;proteína;carboidrato;gordura
+Arroz branco;cozido;130;2.7;28.1;0.3
+Arroz integral;cozido;124;2.6;25.6;1.0
+Feijão carioca;cozido;76;4.8;13.6;0.3
+Feijão preto;cozido;77;4.5;14.0;0.5
+Feijão verde;cozido;72;5.0;13.5;0.3
+Feijão de corda;cozido;80;5.5;14.0;0.4
+Lentilha;cozida;93;6.3;16.3;0.5
+Grão-de-bico;cozido;121;7.0;21.0;2.0
+Ervilha;cozida;81;5.0;14.0;0.4
+Milho verde;cozido;98;3.4;21.0;0.6
+Mandioca;cozida;125;0.6;30.0;0.3
+Farinha de mandioca;bruta;360;1.2;87.0;0.3
+Tapioca;preparada;240;0.5;60.0;0.1
+Batata;cozida;86;1.7;19.0;0.1
+Batata-doce;cozida;86;1.6;20.0;0.1
+Inhame;cozido;101;1.5;23.0;0.2
+Cará;cozido;87;1.7;19.5;0.2
+Batata-baroa;cozida;80;1.5;18.0;0.1
+Cuscuz nordestino;cozido;112;3.8;23.0;0.2
+Pão francês;assado;270;8.0;56.0;1.0
+Pão integral;assado;253;9.0;49.0;3.0
+Peito de frango;grelhado;165;31.0;0;3.6
+Coxa de frango;cozida;209;26.0;0;11.0
+Patinho;cozido;163;26.0;0;6.0
+Alcatra;grelhada;163;24.0;0;6.6
+Filé mignon;grelhado;156;26.0;0;5.0
+Tilápia;grelhada;128;26.0;0;2.7
+Sardinha;grelhada;208;24.0;0;11.0
+Atum em conserva;em água;108;24.0;0;0.8
+Camarão;cozido;99;24.0;0.2;0.3
+Ovo de galinha;cozido;155;13.0;1.1;11.0
+Leite integral;líquido;61;3.2;4.8;3.3
+Leite desnatado;líquido;35;3.4;5.0;0.2
+Iogurte natural;líquido;51;4.1;4.7;1.5
+Queijo minas frescal;fresco;240;17.0;3.2;17.0
+Queijo mussarela;fresco;280;22.0;3.0;20.0
+Queijo prato;fresco;360;23.0;3.0;28.0
+Azeite de oliva;líquido;884;0;0;100.0
+Óleo de soja;líquido;884;0;0;100.0
+Manteiga;temperatura ambiente;717;0.9;0.1;81.0
+Banana nanica;in natura;89;1.1;23.0;0.3
+Banana prata;in natura;92;1.3;23.5;0.3
+Maçã;in natura;52;0.3;14.0;0.2
+Laranja pera;in natura;47;0.9;12.0;0.1
+Tangerina;in natura;53;0.8;13.0;0.3
+Mamão papaia;in natura;43;0.5;11.0;0.3
+Abacaxi;in natura;50;0.5;13.0;0.1
+Manga;in natura;60;0.8;15.0;0.4
+Uva;in natura;69;0.7;18.0;0.2
+Morango;in natura;32;0.7;7.7;0.3
+Melancia;in natura;30;0.6;7.6;0.2
+Melão;in natura;34;0.8;8.2;0.2
+Pera;in natura;57;0.4;15.0;0.1
+Goiaba;in natura;68;2.6;14.0;1.0
+Maracujá;in natura;97;2.2;21.0;0.7
+Caju;in natura;43;1.0;10.0;0.4
+Açaí polpa;congelado;58;0.8;6.2;3.7
+Tomate;in natura;21;1.1;4.7;0.2
+Cenoura;in natura;41;0.9;10.0;0.2
+Cenoura;cozida;35;0.8;8.0;0.2
+Beterraba;cozida;44;1.7;10.0;0.2
+Abobrinha;cozida;15;1.1;3.0;0.2
+Chuchu;cozido;19;0.4;4.5;0.1
+Brócolis;cozido;35;2.4;7.0;0.4
+Couve;cozida;27;1.7;5.0;0.5
+Espinafre;cozido;23;2.9;3.6;0.3
+Alface;in natura;15;1.4;2.8;0.2
+Rúcula;in natura;25;2.6;3.7;0.7
+Agrião;in natura;11;1.5;1.8;0.1
+Repolho;in natura;25;1.3;5.8;0.1
+Pepino;in natura;15;0.6;3.6;0.1
+Pimentão verde;in natura;23;1.0;5.4;0.2
+Berinjela;cozida;35;0.8;8.7;0.2
+Quiabo;cozido;33;1.9;7.0;0.2
+Jiló;cozido;27;1.4;6.0;0.2
+Abóbora;cozida;26;1.0;6.5;0.1
+Vagem;cozida;35;1.9;7.9;0.2
+Palmito;conserva;30;2.5;5.0;0.1
+Cebola;in natura;40;1.1;9.3;0.1
+Alho;in natura;149;6.4;33.0;0.5
+Acelga;cozida;20;1.8;4.0;0.1
+Almeirão;in natura;19;1.5;4.0;0.2

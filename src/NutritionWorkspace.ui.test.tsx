@@ -214,8 +214,11 @@ describe('NutritionWorkspace editor modes', () => {
     fireEvent.change(await screen.findByLabelText('Paciente'), { target: { value: 'patient-1' } })
     const modelCard=(await screen.findByText('Modelo pratico')).closest('article')
     fireEvent.click(within(modelCard!).getByRole('button', { name: 'Aplicar' }))
+    const dialog=await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('button', { name: 'Aplicar 7 dia(s)' })).toBeEnabled()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Aplicar 7 dia(s)' }))
 
-    expect(await screen.findByText(/Modelo aplicado em rascunho independente/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Modelo aplicado em rascunho independente \(7 dia\(s\)\)/i)).toBeInTheDocument()
     expect(screen.getByDisplayValue('Modelo pratico')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Almoco')).toBeInTheDocument()
   })
