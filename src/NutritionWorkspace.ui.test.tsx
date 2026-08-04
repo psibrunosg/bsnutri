@@ -304,4 +304,60 @@ describe('NutritionWorkspace editor modes', () => {
     expect(screen.getAllByDisplayValue('Hipertrofia')).toHaveLength(2)
     expect(screen.getByText(/Modelo aplicado em rascunho local/i)).toBeInTheDocument()
   })
+
+  it('imprime o plano ativo formatado', async () => {
+    const write = vi.fn(), print = vi.fn(), focus = vi.fn(), close = vi.fn()
+    vi.spyOn(window, 'open').mockReturnValue({ document: { write, close }, print, focus } as unknown as Window)
+    render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
+
+    fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
+    fireEvent.change(await screen.findByLabelText('Título'), { target: { value: 'Plano para imprimir' } })
+    fireEvent.click(screen.getByRole('button', { name: /Imprimir plano/i }))
+
+    expect(write).toHaveBeenCalledWith(expect.stringContaining('Plano para imprimir'))
+    expect(print).toHaveBeenCalled()
+  })
+
+  it('mostra e oculta a lista de compras agregada por alimento', async () => {
+    fromMock.mockImplementation((table: string) => queryResult(table === 'foods' ? [{
+      id: 'food-1', name: 'Arroz', preparation_state: 'cozido',
+      food_nutrient_values: [{ amount_per_100g: 130, nutrients: { id: 'n-1', code: 'energy_kcal', name: 'Energia', unit: 'kcal' } }],
+    }] : []))
+    render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
+
+    fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
+    fireEvent.change(await screen.findByLabelText('Buscar alimento'), { target: { value: 'arr' } })
+    fireEvent.change(await screen.findByLabelText('Alimento'), { target: { value: 'food-1' } })
+    fireEvent.change(screen.getByLabelText('Gramas'), { target: { value: '150' } })
+    fireEvent.click(screen.getByRole('button', { name: /Item/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Lista de compras/i }))
+    expect(screen.getByText('Arroz - 150 g')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Ocultar lista de compras/i }))
+    expect(screen.queryByText('Arroz - 150 g')).not.toBeInTheDocument()
+  })
+
+  it('mostra gramas por quilo de peso corporal quando o paciente tem antropometria', async () => {
+    fromMock.mockImplementation((table: string) => table === 'anthropometry'
+      ? queryResult([{ weight_kg: 93 }])
+      : table === 'plans'
+        ? queryResult([{
+            id: 'plan-1', patient_id: 'patient-1', title: 'Plano A', status: 'reviewed', updated_at: '2026-07-17T10:00:00Z',
+            plan_versions: [{
+              id: 'version-1', version_no: 1, targets: { proteinG: 145.42 },
+              assistant_state: { currentStep: 'objective', completedSteps: [], objective: '', clinicalPresets: [], priorityMicronutrients: [] },
+              locked_at: null,
+              plan_days: [{ id: 'day-1', label: 'Dia 1', kind: 'standard', day_index: 0, meals: [{ id: 'meal-1', label: 'Almoco', position: 0, meal_items: [{ id: 'item-1', description: 'Frango', grams: 100, nutrient_snapshot: { proteinG: 145.42 }, meal_item_substitutions: [] }] }] }],
+            }],
+          }])
+        : queryResult([]))
+    render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
+
+    fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
+    fireEvent.click(await screen.findByText('Plano A'))
+    fireEvent.click(screen.getByRole('tab', { name: /Tecnico/i }))
+
+    expect(await screen.findByText('1,56 g/kg')).toBeInTheDocument()
+  })
 })

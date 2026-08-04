@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { ChevronLeft, ChevronRight, Copy, Heart, History, LayoutPanelLeft, PanelRightClose, Plus, RefreshCw, Sparkles, Trash2, UtensilsCrossed } from 'lucide-react'
-import { totalDay, type Meal, type NutrientKey } from './lib/nutrition'
+import { gramsPerKg, totalDay, type Meal, type NutrientKey } from './lib/nutrition'
 import { describeCatalogServing, deriveServingNutrients, matchesCatalogSearch, type CatalogKind } from './lib/catalog'
 import { useFoodCatalog, macroKeys, macroLabels, type CatalogFood, type FoodPreference, type FoodSource } from './lib/useFoodCatalog'
 import { builtInPlanModels, matchesModel, type ModelDimensions, type ModelRules } from './lib/planModels'
@@ -10,6 +10,9 @@ import { supabase } from './lib/supabase'
 import { mapDraftRows, type DraftSummary, type EditorDay, type PlanRow } from './lib/planDrafts'
 import { getRangeIssues } from './lib/planRanges'
 import { comparePlanDays, comparePlanNutrition } from './lib/planComparison'
+import { printClinicalDocument } from './lib/clinicalExport'
+import { buildShoppingList } from './lib/shoppingList'
+import { formatPlanForExport } from './lib/planExport'
 
 type Patient = { id: string; anonymous_code: string; full_name: string }
 type EditorMode = 'quick' | 'technical'
@@ -38,6 +41,8 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
   const autosaveBaselineRef=useRef('')
   const initialAutosaveRef=useRef<LocalPlanDraft|null>(null)
   const [patientId,setPatientId]=useState(''),[title,setTitle]=useState('Plano alimentar'),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
+  const [patientWeightKg,setPatientWeightKg]=useState<number|null>(null)
+  const [showShoppingList,setShowShoppingList]=useState(false)
   const catalog=useFoodCatalog(organizationId,session.user.id,setMessage)
   const meals=days[activeDay]?.meals??[]
   const setMeals:React.Dispatch<React.SetStateAction<Meal[]>>=update=>setDays(all=>all.map((day,index)=>index===activeDay?{...day,meals:typeof update==='function'?update(day.meals):update}:day))
@@ -45,6 +50,7 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
   const rangeIssues=useMemo(()=>getRangeIssues(totals,assistant.targetRanges),[totals,assistant.targetRanges])
   const planChanges=useMemo(()=>baselineDays?comparePlanDays(baselineDays,days):[],[baselineDays,days])
   const nutritionChanges=useMemo(()=>baselineDays?comparePlanNutrition(baselineDays,days):[],[baselineDays,days])
+  const shoppingList=useMemo(()=>buildShoppingList(days),[days])
 
   const loadDrafts=useCallback(async()=>{
     setLoadingDrafts(true)
@@ -59,6 +65,12 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
     return nextDrafts
   },[organizationId])
   useEffect(()=>{void loadDrafts()},[loadDrafts])
+  useEffect(()=>{
+    if(!patientId){setPatientWeightKg(null);return}
+    let active=true
+    supabase.from('anthropometry').select('weight_kg').eq('patient_id',patientId).order('measured_at',{ascending:false}).then(({data})=>{if(active)setPatientWeightKg(((data??[]) as {weight_kg:number|null}[])[0]?.weight_kg??null)})
+    return ()=>{active=false}
+  },[patientId])
   if(!initialAutosaveRef.current)initialAutosaveRef.current={patientId,title,days,activeDay,targets,assistant,editorMode,savedAt:''}
   useEffect(()=>{const current=initialAutosaveRef.current;if(!current)return;autosaveBaselineRef.current=localDraftFingerprint(current);try{const raw=localStorage.getItem(autosaveKey);if(raw)setRecoverableDraft(JSON.parse(raw) as LocalPlanDraft)}catch{}setAutosaveReady(true)},[autosaveKey])
   useEffect(()=>{if(!autosaveReady)return;const draft={patientId,title,days,activeDay,targets,assistant,editorMode,savedAt:new Date().toISOString()} satisfies LocalPlanDraft;if(localDraftFingerprint(draft)===autosaveBaselineRef.current)return;localStorage.setItem(autosaveKey,JSON.stringify(draft))},[autosaveReady,autosaveKey,patientId,title,days,activeDay,targets,assistant,editorMode])
@@ -112,13 +124,15 @@ export function NutritionWorkspace({session,organizationId,patients}:{session:Se
       </aside>
       <main className={`plan-editor ${editorMode}`}>
         <div className="day-tabs" role="tablist" aria-label="Dias do plano">{days.map((day,index)=><button role="tab" aria-selected={activeDay===index} className={activeDay===index?'active':''} key={day.id} onClick={()=>setActiveDay(index)}>{day.label}</button>)}{!locked&&<><button onClick={()=>{setDays(all=>[...all,{...initialDay(),label:`Dia ${all.length+1}`}]);setActiveDay(days.length)}}><Plus/> Dia</button><button className="secondary" onClick={duplicateActiveDay}><Copy/> Duplicar dia</button></>}</div>
+        <div className="plan-export-actions"><button className="secondary" onClick={()=>{if(!printClinicalDocument(title||'Plano alimentar',patients.find(p=>p.id===patientId)?.full_name??'',formatPlanForExport(title||'Plano alimentar',days,targets)))setMessage('Permita janelas pop-up para exportar.')}}>Imprimir plano</button><button className="secondary" onClick={()=>setShowShoppingList(value=>!value)}>{showShoppingList?'Ocultar lista de compras':'Lista de compras'}</button></div>
+        {showShoppingList&&<section className="panel plan-shopping-list"><h3>Lista de compras</h3>{shoppingList.length?<ul>{shoppingList.map(item=><li key={item.name}>{item.name} - {item.grams.toLocaleString('pt-BR')} g</li>)}</ul>:<p className="muted">Nenhum item nas refeições ainda.</p>}{shoppingList.length>0&&<button className="secondary" onClick={()=>{if(!printClinicalDocument('Lista de compras',title||'Plano alimentar',shoppingList.map(item=>`${item.name} - ${item.grams.toLocaleString('pt-BR')} g`).join('\n')))setMessage('Permita janelas pop-up para exportar.')}}>Imprimir lista</button>}</section>}
         {meals.map((meal,index)=><EditableMealCard key={meal.id} meal={meal} index={index} foods={catalog.foods} setMeals={setMeals} addItem={addItem} duplicateMeal={duplicateMeal} readOnly={locked}/>)}<MealDistributionInputs meals={meals} assistant={assistant} setAssistant={setAssistant} locked={locked}/>
         {planChanges.length>0&&<section className="panel plan-comparison"><h3>Alterações desde versão aberta</h3><ul>{planChanges.map(change=><li key={change}>{change}</li>)}</ul>{nutritionChanges.length>0&&<><h4>Impacto nutricional do plano</h4><ul>{nutritionChanges.map(change=><li key={change}>{change}</li>)}</ul></>}</section>}{!locked&&<div className="editor-actions"><button className="secondary" onClick={()=>setMeals(m=>[...m,{id:crypto.randomUUID(),name:`Refeição ${m.length+1}`,items:[]}])}><Plus/>Adicionar refeição</button><button className="secondary" disabled={days.length<2} onClick={applyActiveStructureToAllDays}><Copy/>Aplicar refeições a todos os dias</button><span className="publication-actions"><button className="secondary" disabled={busy||!loadedDraft||!canReviewPlan(assistant)} onClick={()=>void review()}>Marcar como revisado</button><button className="primary" disabled={busy||!canPublishPlan(assistant,planStatus)} onClick={()=>void publish()}>{confirmSubstitutionWarning?'Confirmar publicação':'Publicar'}</button><button className="primary" disabled={busy} onClick={()=>void save()}>{busy?'Salvando...':loadedDraft?'Salvar como novo rascunho':'Salvar rascunho'}</button></span></div>}
       </main>
       <aside className="plan-analysis" aria-label="Análise nutricional">
         <button className="rail-toggle" aria-label={analysisCollapsed?'Expandir análise':'Recolher análise'} onClick={()=>setAnalysisCollapsed(value=>!value)}>{analysisCollapsed?<PanelRightClose/>:<ChevronRight/>}</button>
         {!analysisCollapsed&&<><section className="panel target-panel" aria-hidden={editorMode==='quick'}><header><div><h2>Metas nutricionais</h2><small>Status: {planStatus==='published'?'Publicado':planStatus==='reviewed'?'Revisado':'Rascunho'}</small></div></header><div>{[['energyKcal','Energia (kcal)'],['proteinG','Proteína (g)'],['carbohydrateG','Carboidrato (g)'],['fatG','Gordura (g)'],['fiberG','Fibra (g)'],['waterMl','Água (ml)']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="0.1" value={targets[key]??0} disabled={locked} onChange={e=>setTargets(all=>({...all,[key]:Number(e.target.value)}))}/></label>)}</div><TargetRangeInputs state={assistant} setState={setAssistant} setTargets={setTargets} locked={locked}/></section>
-        <section className="live-totals" aria-hidden={editorMode==='quick'}>{macroKeys.map(k=><div key={k}><small>{macroLabels[k]}</small><strong>{totals[k].toLocaleString('pt-BR')} {k==='energyKcal'?'kcal':'g'}</strong></div>)}</section>
+        <section className="live-totals" aria-hidden={editorMode==='quick'}>{macroKeys.map(k=>{const perKg=k==='energyKcal'?null:gramsPerKg(totals[k],patientWeightKg);return <div key={k}><small>{macroLabels[k]}</small><strong>{totals[k].toLocaleString('pt-BR')} {k==='energyKcal'?'kcal':'g'}</strong>{perKg!==null&&<small>{perKg.toLocaleString('pt-BR')} g/kg</small>}</div>})}</section>
         {rangeIssues.length>0&&<section className="panel range-issues" role="status"><h3>Faixas a revisar</h3><ul>{rangeIssues.map(issue=><li key={issue}>{issue}</li>)}</ul><label>Justificativa clínica<textarea value={assistant.rangeJustification??''} disabled={locked} onChange={event=>setAssistant(current=>({...current,rangeJustification:event.target.value}))}/></label></section>}<TechnicalChecklist assistant={assistant} canReview={canReviewPlan(assistant)} hidden={editorMode==='quick'}/></>}
       </aside>
     </div>}
