@@ -3,6 +3,8 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { ClinicalDrafts } from './ClinicalDrafts'
 import { printClinicalDocument } from './lib/clinicalExport'
+import { NutritionalEstimator } from './components/NutritionalEstimator'
+import type { NutritionalEstimateRow } from './types'
 
 type Workspace = { organization_id: string; role: string; organizations: { name: string } | null }
 type Patient = { id: string; anonymous_code: string; full_name: string; email: string | null; birth_date: string | null; status: string }
@@ -32,10 +34,11 @@ export function PatientDetail({ patient, session, workspace, onBack }: { patient
   const [summaries, setSummaries] = useState<ConsultationSummary[]>([])
   const [goals, setGoals] = useState<PatientGoal[]>([])
   const [weeklySummary, setWeeklySummary] = useState<WeeklySummary | null>(null)
+  const [estimates, setEstimates] = useState<NutritionalEstimateRow[]>([])
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
-    const [assessmentResult, measurementResult, consentResult, labResult, templateResult, assignmentResult, summaryResult, goalResult, weeklyResult] = await Promise.all([
+    const [assessmentResult, measurementResult, consentResult, labResult, templateResult, assignmentResult, summaryResult, goalResult, weeklyResult, estimateResult] = await Promise.all([
       supabase.from('assessments').select('id,assessed_at,objective,allergies,clinical_notes').eq('patient_id', patient.id).order('assessed_at', { ascending: false }),
       supabase.from('anthropometry').select('id,measured_at,weight_kg,height_cm,body_fat_percent,waist_cm,notes').eq('patient_id', patient.id).order('measured_at', { ascending: false }),
       supabase.from('patient_consents').select('id,consent_type,document_version,granted_at,revoked_at').eq('patient_id', patient.id).order('granted_at', { ascending: false }),
@@ -45,8 +48,9 @@ export function PatientDetail({ patient, session, workspace, onBack }: { patient
       supabase.from('consultation_summaries').select('id,summary,created_at').eq('patient_id', patient.id).order('created_at', { ascending: false }),
       supabase.from('patient_goals').select('id,kind,title,target_value,target_unit,active,starts_on,ends_on').eq('patient_id', patient.id).order('created_at', { ascending: false }),
       supabase.rpc('get_patient_weekly_summary', { target_patient_id: patient.id, target_days: 7 }),
+      supabase.from('nutritional_estimates').select('*').eq('patient_id', patient.id).order('calculated_on', { ascending: false }),
     ])
-    const first = assessmentResult.error ?? measurementResult.error ?? consentResult.error ?? labResult.error ?? templateResult.error ?? assignmentResult.error ?? summaryResult.error ?? goalResult.error ?? weeklyResult.error
+    const first = assessmentResult.error ?? measurementResult.error ?? consentResult.error ?? labResult.error ?? templateResult.error ?? assignmentResult.error ?? summaryResult.error ?? goalResult.error ?? weeklyResult.error ?? estimateResult.error
     if (first) setError(first.message)
     else {
       setAssessments(assessmentResult.data ?? [])
@@ -58,6 +62,7 @@ export function PatientDetail({ patient, session, workspace, onBack }: { patient
       setSummaries(summaryResult.data ?? [])
       setGoals((goalResult.data ?? []) as PatientGoal[])
       setWeeklySummary((weeklyResult.data as WeeklySummary | null) ?? null)
+      setEstimates((estimateResult.data ?? []) as unknown as NutritionalEstimateRow[])
     }
   }, [patient.id, workspace.organization_id])
 
@@ -136,11 +141,13 @@ export function PatientDetail({ patient, session, workspace, onBack }: { patient
     ...measurements.map(item=>({id:`measurement-${item.id}`,date:item.measured_at,label:`Medida · ${item.weight_kg ?? '-'} kg`,detail:item.waist_cm!==null?`Cintura ${item.waist_cm} cm`:null})),
     ...labs.map(item=>({id:`lab-${item.id}`,date:item.collected_on,label:`Exame · ${item.test_name}`,detail:item.result_value!==null?`${item.result_value} ${item.unit ?? ''}`:null})),
     ...summaries.map(item=>({id:`summary-${item.id}`,date:item.created_at,label:'Resumo de consulta',detail:null})),
+    ...estimates.map(item=>({id:`estimate-${item.id}`,date:item.calculated_on,label:`Estimativa · GET ${item.total_energy_expenditure} kcal`,detail:`TMB ${item.basal_metabolic_rate} kcal (${item.protocol})`})),
   ].sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime())
 
   return <section className="detail"><button className="back" onClick={onBack}>Voltar para pacientes</button><div className="detail-heading"><div className="avatar">{patient.full_name.slice(0, 2).toUpperCase()}</div><div><small>{patient.anonymous_code}</small><h1>{patient.full_name}</h1></div><button className="secondary" onClick={()=>void exportSummary()}>Exportar resumo</button></div>{error && <div className="notice error" role="alert">{error}</div>}
     <div className="detail-grid"><DetailSection title="Nova avaliacao"><form onSubmit={addAssessment}><label>Objetivo<input name="objective" maxLength={500}/></label><label>Preferencias alimentares<input name="preferences" maxLength={1000}/></label><label>Restricoes alimentares<input name="restrictions" maxLength={1000}/></label><label>Alergias<input name="allergies" maxLength={1000}/></label><label>Observacoes clinicas<textarea name="clinicalNotes" maxLength={2000}/></label><button className="primary">Salvar avaliacao</button></form></DetailSection>
     <DetailSection title="Nova antropometria"><form onSubmit={addMeasurement}><div className="field-row"><label>Peso (kg)<input name="weight" inputMode="decimal" required/></label><label>Altura (cm)<input name="height" inputMode="decimal" required/></label></div><div className="field-row"><label>Gordura (%)<input name="fat" inputMode="decimal"/></label><label>Cintura (cm)<input name="waist" inputMode="decimal"/></label></div><label>Observacoes da medida<textarea name="notes" maxLength={1000}/></label><button className="primary">Salvar medidas</button></form></DetailSection></div>
+    <NutritionalEstimator organizationId={workspace.organization_id} patient={patient} userId={session.user.id} latestAnthro={measurements[0]} estimates={estimates} onReload={load} />
     <div className="detail-grid histories"><DetailSection title="Historico de avaliacoes">{assessments.length ? assessments.map(a => <article className="history" key={a.id}><time>{new Date(a.assessed_at).toLocaleDateString('pt-BR')}</time><strong>{a.objective || 'Sem objetivo informado'}</strong>{a.allergies && <p>Alergias: {a.allergies}</p>}{a.clinical_notes && <p>{a.clinical_notes}</p>}</article>) : <p className="muted">Nenhuma avaliacao registrada.</p>}</DetailSection>
     <DetailSection title="Evolucao antropometrica">{measurements.length ? measurements.map(m => <article className="history measurement" key={m.id}><time>{new Date(m.measured_at).toLocaleDateString('pt-BR')}</time><span><strong>{m.weight_kg?.toLocaleString('pt-BR')} kg</strong> · {m.height_cm?.toLocaleString('pt-BR')} cm</span><p>IMC: {imc(m)}{m.body_fat_percent !== null ? ` · Gordura: ${m.body_fat_percent}%` : ''}{m.waist_cm !== null ? ` · Cintura: ${m.waist_cm} cm` : ''}</p>{m.notes && <p>{m.notes}</p>}</article>) : <p className="muted">Nenhuma medida registrada.</p>}</DetailSection></div>
     <div className="detail-grid histories"><DetailSection title="Pre-consulta e anamnese"><form onSubmit={createIntakeTemplate}><label>Novo modelo<input name="name" defaultValue="Anamnese pre-consulta adulto" required maxLength={120}/></label><button className="secondary">Criar modelo padrao</button></form><form onSubmit={assignTemplate}><label>Atribuir ao paciente<select name="version" required><option value="">Selecione</option>{versions.map(v => <option key={v.id} value={v.id}>{v.title} v{v.version_no}</option>)}</select></label><button className="primary">Atribuir pre-consulta</button></form>{assignments.length ? assignments.map(a => <article className="history" key={a.id}><time>{new Date(a.assigned_at).toLocaleDateString('pt-BR')}</time><strong>{a.form_template_versions?.title ?? 'Formulario'} · {a.status}</strong>{a.form_responses?.[0]?.values && <ul>{(a.form_template_versions?.form_fields ?? []).sort((x, y) => x.position - y.position).map(f => <li key={f.id}><b>{f.label}:</b> {a.form_responses[0].values[f.id] || 'Sem resposta'}</li>)}</ul>}</article>) : <p className="muted">Nenhuma pre-consulta atribuida.</p>}</DetailSection>

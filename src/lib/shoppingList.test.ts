@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { buildShoppingList } from './shoppingList'
 import type { EditorDay } from './planDrafts'
+import { emptyNutrients } from './nutrition'
 
-const emptyNutrientsForTest = { energyKcal: 0, proteinG: 0, carbohydrateG: 0, fatG: 0, fiberG: 0, sodiumMg: 0, calciumMg: 0, ironMg: 0, potassiumMg: 0, vitaminCMg: 0 }
+const emptyNutrientsForTest = emptyNutrients()
 
 const day = (label: string, items: { name: string; grams: number }[]): EditorDay => ({
   id: `day-${label}`,

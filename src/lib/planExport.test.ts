@@ -35,4 +35,34 @@ describe('formatPlanForExport', () => {
     const text = formatPlanForExport('Plano vazio', emptyMealDays, {})
     expect(text).toContain('(sem itens)')
   })
+
+  it('formata lista de trocas de equivalência calórica vinculada à refeição', () => {
+    const daysWithEq: EditorDay[] = [{
+      id: 'day-1',
+      label: 'Dia 1',
+      kind: 'standard',
+      meals: [{
+        id: 'meal-1',
+        name: 'Almoço',
+        items: [],
+        equivalencyListId: 'eq-carb',
+      }],
+    }]
+    const equivalencyLists = [{
+      id: 'eq-carb',
+      title: 'Grupo dos Carboidratos (~100 kcal)',
+      macroGroup: 'carbohydrate',
+      targetCalories: 100,
+      calorieTolerancePct: 15,
+      isActive: true,
+      items: [
+        { id: '1', equivalencyListId: 'eq-carb', description: 'Arroz integral', grams: 80, householdMeasure: '3 colheres', caloriesPerPortion: 99, position: 0 },
+        { id: '2', equivalencyListId: 'eq-carb', description: 'Batata doce', grams: 115, householdMeasure: null, caloriesPerPortion: 98, position: 1 },
+      ],
+    }]
+    const text = formatPlanForExport('Plano com trocas', daysWithEq, {}, equivalencyLists)
+    expect(text).toContain('[Opções de Troca por Equivalência · Grupo dos Carboidratos (~100 kcal) (±15%)]')
+    expect(text).toContain('• Arroz integral - 80 g (3 colheres) · ~99 kcal')
+    expect(text).toContain('• Batata doce - 115 g · ~98 kcal')
+  })
 })

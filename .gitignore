@@ -26,3 +26,5 @@ graphify-out/
 
 # Git worktrees (subagent-driven-development)
 .worktrees
+.claude-flow/
+.claude/worktrees/

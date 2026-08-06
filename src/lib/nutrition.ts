@@ -9,6 +9,16 @@ export const nutrientKeys = [
   'ironMg',
   'potassiumMg',
   'vitaminCMg',
+  'saturatedFatG',
+  'monounsaturatedFatG',
+  'polyunsaturatedFatG',
+  'transFatG',
+  'vitaminB1Mg',
+  'vitaminB2Mg',
+  'vitaminB3Mg',
+  'vitaminB6Mg',
+  'vitaminB9Mcg',
+  'vitaminB12Mcg',
 ] as const
 
 export type NutrientKey = (typeof nutrientKeys)[number]
@@ -29,6 +39,7 @@ export interface Meal {
   id: string
   name: string
   items: FoodPortion[]
+  equivalencyListId?: string
 }
 
 export interface MealTotal extends Meal {
@@ -55,6 +66,16 @@ export const emptyNutrients = (): Nutrients => ({
   ironMg: 0,
   potassiumMg: 0,
   vitaminCMg: 0,
+  saturatedFatG: 0,
+  monounsaturatedFatG: 0,
+  polyunsaturatedFatG: 0,
+  transFatG: 0,
+  vitaminB1Mg: 0,
+  vitaminB2Mg: 0,
+  vitaminB3Mg: 0,
+  vitaminB6Mg: 0,
+  vitaminB9Mcg: 0,
+  vitaminB12Mcg: 0,
 })
 
 /** Decimal rounding independent from the host locale. */

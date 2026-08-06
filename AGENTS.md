@@ -15,3 +15,7 @@ Use the default Matt Pocock triage label vocabulary. See `docs/agents/triage-lab
 ### Domain docs
 
 This is a single-context repo: read root domain docs and root ADRs when they exist. See `docs/agents/domain.md`.
+
+### Planning workflow
+
+For every development or audit plan, read and follow `docs/agents/planning-workflow.md`.

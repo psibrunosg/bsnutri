@@ -625,6 +625,104 @@ export type Database = {
           },
         ]
       }
+      equivalency_list_items: {
+        Row: {
+          calories_per_portion: number
+          description: string
+          equivalency_list_id: string
+          food_id: string | null
+          grams: number
+          household_measure: string | null
+          id: string
+          position: number
+        }
+        Insert: {
+          calories_per_portion?: number
+          description: string
+          equivalency_list_id: string
+          food_id?: string | null
+          grams: number
+          household_measure?: string | null
+          id?: string
+          position?: number
+        }
+        Update: {
+          calories_per_portion?: number
+          description?: string
+          equivalency_list_id?: string
+          food_id?: string | null
+          grams?: number
+          household_measure?: string | null
+          id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equivalency_list_items_equivalency_list_id_fkey"
+            columns: ["equivalency_list_id"]
+            isOneToOne: false
+            referencedRelation: "equivalency_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equivalency_list_items_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "foods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equivalency_lists: {
+        Row: {
+          calorie_tolerance_pct: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          macro_group: string
+          organization_id: string | null
+          target_calories: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          calorie_tolerance_pct?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          macro_group: string
+          organization_id?: string | null
+          target_calories: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          calorie_tolerance_pct?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          macro_group?: string
+          organization_id?: string | null
+          target_calories?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equivalency_lists_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follow_up_actions: {
         Row: {
           action_type: string
@@ -1692,6 +1790,7 @@ export type Database = {
       }
       meals: {
         Row: {
+          equivalency_list_id: string | null
           id: string
           label: string
           organization_id: string
@@ -1700,6 +1799,7 @@ export type Database = {
           suggested_time: string | null
         }
         Insert: {
+          equivalency_list_id?: string | null
           id?: string
           label: string
           organization_id: string
@@ -1708,6 +1808,7 @@ export type Database = {
           suggested_time?: string | null
         }
         Update: {
+          equivalency_list_id?: string | null
           id?: string
           label?: string
           organization_id?: string
@@ -1716,6 +1817,13 @@ export type Database = {
           suggested_time?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "meals_equivalency_list_id_fkey"
+            columns: ["equivalency_list_id"]
+            isOneToOne: false
+            referencedRelation: "equivalency_lists"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meals_organization_id_fkey"
             columns: ["organization_id"]

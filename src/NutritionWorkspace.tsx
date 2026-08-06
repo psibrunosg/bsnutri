@@ -1,247 +1,70 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useState, useEffect } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { ChevronLeft, ChevronRight, Copy, Heart, History, LayoutPanelLeft, PanelRightClose, Plus, RefreshCw, Sparkles, Trash2, UtensilsCrossed, X } from 'lucide-react'
-import { gramsPerKg, totalDay, type Meal, type NutrientKey } from './lib/nutrition'
-import { describeCatalogServing, deriveServingNutrients, matchesCatalogSearch, type CatalogKind } from './lib/catalog'
-import { useFoodCatalog, macroKeys, macroLabels, type CatalogFood, type FoodPreference, type FoodSource } from './lib/useFoodCatalog'
-import { builtInPlanModels, matchesModel, type ModelDimensions, type ModelRules } from './lib/planModels'
-import { assistantLabels, assistantSteps, canPublishPlan, canReviewPlan, clinicalPresetLabels, clinicalPresets, completeAssistantStep, getPlanQualityIssues, initialAssistantState, sanitizeAssistantState, toggleClinicalPreset, type PlanAssistantState, type PlanAssistantStep } from './lib/planAssistant'
-import { supabase } from './lib/supabase'
-import { mapDraftRows, type DraftSummary, type EditorDay, type PlanRow } from './lib/planDrafts'
-import { getRangeIssues } from './lib/planRanges'
-import { comparePlanDays, comparePlanNutrition } from './lib/planComparison'
-import { printClinicalDocument } from './lib/clinicalExport'
-import { buildShoppingList } from './lib/shoppingList'
-import { formatPlanForExport } from './lib/planExport'
+import { useFoodCatalog, macroKeys, macroLabels } from './lib/useFoodCatalog'
+import { usePlanDraft, type Patient } from './lib/usePlanDraft'
+import { NutritionCatalog } from './components/NutritionCatalog'
+import { PlanEditor } from './components/PlanEditor'
 
-type Patient = { id: string; anonymous_code: string; full_name: string }
-type EditorMode = 'quick' | 'technical'
-type PlanTemplate = { id: string; name: string; objective: string | null; tags: string[]; created_at: string; scope:'personal'|'organization'; dimensions:ModelDimensions; rules:ModelRules }
-type LocalPlanDraft = { patientId:string; title:string; days:EditorDay[]; activeDay:number; targets:Record<string,number>; assistant:PlanAssistantState; editorMode:EditorMode; savedAt:string }
-function localDraftFingerprint(draft:LocalPlanDraft){const {savedAt:_savedAt,...content}=draft;return JSON.stringify(content)}
-const cloneMeal=(meal:Meal):Meal=>({...meal,id:crypto.randomUUID(),items:meal.items.map(item=>({...item,id:crypto.randomUUID()}))})
-const cloneDay=(day:EditorDay):EditorDay=>({...day,id:crypto.randomUUID(),label:`${day.label} copia`,meals:day.meals.map(cloneMeal)})
+export function NutritionWorkspace({ session, organizationId, patients }: { session: Session; organizationId: string; patients: Patient[] }) {
+  const [tab, setTab] = useState<'catalog' | 'plan'>('catalog')
+  const [message, setMessage] = useState('')
+  const catalog = useFoodCatalog(organizationId, session.user.id, setMessage)
+  const planDraft = usePlanDraft(organizationId, session.user.id, catalog, setMessage, setTab)
 
-const initialDay = (): EditorDay => ({ id:crypto.randomUUID(), label:'Dia 1', kind:'standard', meals:[{id:crypto.randomUUID(),name:'Café da manhã',items:[]}] })
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash === 'plan' || hash === 'catalog') {
+      setTab(hash);
+    }
+  }, []);
 
-export function NutritionWorkspace({session,organizationId,patients}:{session:Session;organizationId:string;patients:Patient[]}){
-  const autosaveKey=`bsnutri:plan-draft:${organizationId}`
-  const [tab,setTab]=useState<'catalog'|'plan'>('catalog')
-  const [days,setDays]=useState<EditorDay[]>([initialDay()]),[activeDay,setActiveDay]=useState(0)
+  useEffect(() => {
+    if (tab === 'plan' || tab === 'catalog') {
+      const newUrl = window.location.pathname + (window.location.search ? '&' : '?') + 'tab=' + tab;
+      window.history.replaceState(null, '', newUrl);
+    }
+  }, [tab]);
 
-useEffect(() => {
-  const hash = window.location.hash.slice(1);
-  if (hash === 'plan' || hash === 'catalog') {
-    setTab(hash);
-  }
-}, []);
-
-useEffect(() => {
-  if (tab === 'plan' || tab === 'catalog') {
-    const newUrl = window.location.pathname + (window.location.search ? '&' : '?') + 'tab=' + tab;
-    window.history.replaceState(null, '', newUrl);
-  }
-}, [tab]);
-  const [baselineDays,setBaselineDays]=useState<EditorDay[]|null>(null)
-  const [drafts,setDrafts]=useState<DraftSummary[]>([]),[templates,setTemplates]=useState<PlanTemplate[]>([]),[loadedDraft,setLoadedDraft]=useState<string|null>(null),[loadingDrafts,setLoadingDrafts]=useState(true)
-  const [loadedVersion,setLoadedVersion]=useState(''),[planStatus,setPlanStatus]=useState('draft'),[locked,setLocked]=useState(false)
-  const [targets,setTargets]=useState<Record<string,number>>({energyKcal:0,proteinG:0,carbohydrateG:0,fatG:0,fiberG:0,waterMl:0})
-  const [assistant,setAssistant]=useState<PlanAssistantState>(initialAssistantState())
-  const [editorMode,setEditorMode]=useState<EditorMode>('quick')
-  const [confirmSubstitutionWarning,setConfirmSubstitutionWarning]=useState(false)
-  const [contextCollapsed,setContextCollapsed]=useState(false),[analysisCollapsed,setAnalysisCollapsed]=useState(false)
-  const [modelFilters,setModelFilters]=useState<Partial<ModelDimensions>>({})
-  const [recoverableDraft,setRecoverableDraft]=useState<LocalPlanDraft|null>(null),[autosaveReady,setAutosaveReady]=useState(false)
-  const autosaveBaselineRef=useRef('')
-  const initialAutosaveRef=useRef<LocalPlanDraft|null>(null)
-  const [patientId,setPatientId]=useState(''),[title,setTitle]=useState('Plano alimentar'),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
-  const [applyDialog,setApplyDialog]=useState<{templateId:string;name:string}|null>(null)
-  const [patientWeightKg,setPatientWeightKg]=useState<number|null>(null)
-  const [showShoppingList,setShowShoppingList]=useState(false)
-  const catalog=useFoodCatalog(organizationId,session.user.id,setMessage)
-  const meals=days[activeDay]?.meals??[]
-  const setMeals:React.Dispatch<React.SetStateAction<Meal[]>>=update=>setDays(all=>all.map((day,index)=>index===activeDay?{...day,meals:typeof update==='function'?update(day.meals):update}:day))
-  const totals=useMemo(()=>totalDay(days[activeDay]?.meals??[]),[days,activeDay])
-  const rangeIssues=useMemo(()=>getRangeIssues(totals,assistant.targetRanges),[totals,assistant.targetRanges])
-  const planChanges=useMemo(()=>baselineDays?comparePlanDays(baselineDays,days):[],[baselineDays,days])
-  const nutritionChanges=useMemo(()=>baselineDays?comparePlanNutrition(baselineDays,days):[],[baselineDays,days])
-  const shoppingList=useMemo(()=>buildShoppingList(days),[days])
-
-  const loadDrafts=useCallback(async()=>{
-    setLoadingDrafts(true)
-    const [result,templateResult]=await Promise.all([
-      supabase.from('plans').select('id,patient_id,title,status,updated_at,plan_versions!plan_versions_plan_id_organization_id_fkey(id,version_no,targets,assistant_state,locked_at,plan_days(id,label,kind,day_index,meals(id,label,position,meal_items(id,food_id,description,grams,nutrient_snapshot,meal_item_substitutions(is_active))))))').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
-       supabase.from('plan_templates').select('id,name,objective,tags,created_at,scope,dimensions,rules').eq('organization_id',organizationId).order('created_at',{ascending:false}),
-    ])
-    if(result.error||templateResult.error){setMessage(result.error?.message??templateResult.error?.message??'Erro ao carregar planos.');setDrafts([]);setLoadingDrafts(false);return []}
-    const nextDrafts=mapDraftRows((result.data??[]) as unknown as PlanRow[])
-    setDrafts(nextDrafts);setTemplates((templateResult.data??[]) as PlanTemplate[])
-    setLoadingDrafts(false)
-    return nextDrafts
-  },[organizationId])
-  useEffect(()=>{void loadDrafts()},[loadDrafts])
-  useEffect(()=>{
-    if(!patientId){setPatientWeightKg(null);return}
-    let active=true
-    supabase.from('anthropometry').select('weight_kg').eq('patient_id',patientId).order('measured_at',{ascending:false}).then(({data})=>{if(active)setPatientWeightKg(((data??[]) as {weight_kg:number|null}[])[0]?.weight_kg??null)})
-    return ()=>{active=false}
-  },[patientId])
-  if(!initialAutosaveRef.current)initialAutosaveRef.current={patientId,title,days,activeDay,targets,assistant,editorMode,savedAt:''}
-  useEffect(()=>{const current=initialAutosaveRef.current;if(!current)return;autosaveBaselineRef.current=localDraftFingerprint(current);try{const raw=localStorage.getItem(autosaveKey);if(raw)setRecoverableDraft(JSON.parse(raw) as LocalPlanDraft)}catch{}setAutosaveReady(true)},[autosaveKey])
-  useEffect(()=>{if(!autosaveReady)return;const draft={patientId,title,days,activeDay,targets,assistant,editorMode,savedAt:new Date().toISOString()} satisfies LocalPlanDraft;if(localDraftFingerprint(draft)===autosaveBaselineRef.current)return;localStorage.setItem(autosaveKey,JSON.stringify(draft))},[autosaveReady,autosaveKey,patientId,title,days,activeDay,targets,assistant,editorMode])
-
-  function openDraft(draft:DraftSummary){setPatientId(draft.patientId);setTitle(draft.title);setDays(draft.days.length?draft.days:[initialDay()]);setBaselineDays(structuredClone(draft.days));setActiveDay(0);setLoadedDraft(draft.id);setLoadedVersion(draft.versionId);setPlanStatus(draft.status);setLocked(draft.locked);setAssistant(draft.assistantState);setTargets(current=>({...current,...draft.targets}));setConfirmSubstitutionWarning(false);setTab('plan');setMessage(draft.locked?'Plano publicado aberto em modo somente leitura.':`Plano aberto, versão ${draft.version}.`)}
-  function restoreLocalDraft(){if(!recoverableDraft)return;const restoredDays=recoverableDraft.days.length?recoverableDraft.days:[initialDay()];const restored={...recoverableDraft,days:restoredDays,activeDay:Math.min(recoverableDraft.activeDay,restoredDays.length-1),assistant:sanitizeAssistantState(recoverableDraft.assistant)};autosaveBaselineRef.current=localDraftFingerprint(restored);setPatientId(restored.patientId);setTitle(restored.title);setDays(restored.days);setActiveDay(restored.activeDay);setTargets(restored.targets);setAssistant(restored.assistant);setEditorMode(restored.editorMode);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setRecoverableDraft(null);setAutosaveReady(true);setTab('plan');setMessage('Rascunho local restaurado.')}
-  function discardLocalDraft(){localStorage.removeItem(autosaveKey);autosaveBaselineRef.current=localDraftFingerprint({patientId,title,days,activeDay,targets,assistant,editorMode,savedAt:''});setRecoverableDraft(null);setAutosaveReady(true);setMessage('Rascunho local descartado.')}
-  function startBlankPlan(){setTitle('Plano alimentar');setDays([initialDay()]);setBaselineDays(null);setActiveDay(0);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setAssistant(initialAssistantState());setTargets({energyKcal:0,proteinG:0,carbohydrateG:0,fatG:0,fiberG:0,waterMl:0});setConfirmSubstitutionWarning(false);setTab('plan');setMessage('Novo plano em branco iniciado.')}
-  function copyOpenDraft(){if(!loadedDraft)return setMessage('Abra um plano anterior para usar como base.');setTitle(`${title} copia`);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setConfirmSubstitutionWarning(false);setTab('plan');setMessage('Plano aberto copiado como base. Salve para criar um novo rascunho.')}
-  async function review(){if(!loadedDraft||!loadedVersion)return setMessage('Salve e abra um plano antes de revisar.');const issues=getPlanQualityIssues(assistant,targets);if(issues.length){setEditorMode('technical');return setMessage(issues.join(' '))}const nextAssistant=completeAssistantStep(assistant,'review');setBusy(true);const {error}=await supabase.rpc('review_plan_version',{target_plan_id:loadedDraft,target_version_id:loadedVersion,target_targets:targets,target_assistant_state:nextAssistant});setBusy(false);if(error)return setMessage(`Não foi possível revisar: ${error.message}`);setAssistant(nextAssistant);setPlanStatus('reviewed');setMessage('Versão revisada. Confira e publique quando estiver pronta.');await loadDrafts()}
-  async function publish(){if(!loadedDraft||!loadedVersion)return setMessage('Abra uma versão revisada antes de publicar.');const issues=getPlanQualityIssues(assistant,targets);if(issues.length){setEditorMode('technical');return setMessage(issues.join(' '))}if(!canPublishPlan(assistant,planStatus))return setMessage('Conclua a revisão do assistente antes de publicar.');const missingSubstitutions=days.some(day=>day.meals.some(meal=>meal.items.some(item=>!item.hasReviewedSubstitution)));if(missingSubstitutions&&!confirmSubstitutionWarning){setConfirmSubstitutionWarning(true);return setMessage('Aviso: ha refeicoes sem substituicoes revisadas. Clique em Publicar novamente para confirmar.')}setBusy(true);const {error}=await supabase.rpc('publish_plan_version',{target_plan_id:loadedDraft,target_version_id:loadedVersion});setBusy(false);if(error)return setMessage(`Não foi possível publicar: ${error.message}`);setPlanStatus('published');setLocked(true);setConfirmSubstitutionWarning(false);setAssistant(completeAssistantStep(assistant,'publish'));setMessage('Plano publicado e bloqueado para edição.');await loadDrafts()}
-  const currentDimensions=():ModelDimensions=>({approaches:assistant.clinicalPresets,objectives:assistant.objective?[assistant.objective]:[],restrictions:[],preferences:[],contexts:[]})
-  async function saveTemplate(scope:'personal'|'organization'){if(!loadedDraft)return setMessage('Abra um plano antes de salvar como modelo.');const name=window.prompt('Nome do modelo:',title)?.trim();if(!name)return;const {error}=await supabase.rpc('create_plan_template_from_plan_v2',{target_plan_id:loadedDraft,target_name:name,target_scope:scope,target_dimensions:currentDimensions(),target_rules:{targets,guidance:[]}});if(error)setMessage(error.message);else{setMessage(scope==='personal'?'Modelo pessoal salvo.':'Modelo compartilhado com a clínica.');await loadDrafts()}}
-  async function copyTemplate(templateId:string,weekdays?:string[]){if(!patientId)return setMessage('Selecione um paciente antes de aplicar o modelo.');const {data,error}=await supabase.rpc('apply_plan_template_to_patient',{target_template_id:templateId,target_patient_id:patientId,...(weekdays?.length?{target_weekdays:weekdays}:{})});if(error)setMessage(error.message);else{const nextDrafts=await loadDrafts();const copiedId=typeof data==='string'?data:(data as {id?:string}|null)?.id;const copiedDraft=nextDrafts.find(draft=>draft.id===copiedId);if(copiedDraft)openDraft(copiedDraft);setMessage(copiedDraft?`Modelo aplicado em rascunho independente (${weekdays?.length??1} dia(s)). Revise antes de publicar.`:'Modelo aplicado para novo rascunho.')}}
-  function requestApplyTemplate(templateId:string,name:string){if(!patientId)return setMessage('Selecione um paciente antes de aplicar o modelo.');setApplyDialog({templateId,name})}
-  function applyBuiltInModel(model:(typeof builtInPlanModels)[number]){if(!patientId)return setMessage('Selecione um paciente antes de aplicar o modelo.');setTitle(model.name);setTargets(model.rules.targets);setAssistant(current=>({...current,objective:model.dimensions.objectives[0]??current.objective,clinicalPresets:[],priorityMicronutrients:[],currentStep:'objective',completedSteps:[]}));setDays([initialDay()]);setBaselineDays(null);setActiveDay(0);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setTab('plan');setMessage('Modelo aplicado em rascunho local. Ajuste metas e refeições antes de salvar.')}
-  function duplicateActiveDay(){const source=days[activeDay];if(!source)return;setDays(all=>{const next=[...all.slice(0,activeDay+1),cloneDay(source),...all.slice(activeDay+1)];setActiveDay(activeDay+1);return next});setMessage('Dia duplicado.')}
-  function duplicateMeal(meal:Meal){setMeals(all=>{const index=all.findIndex(item=>item.id===meal.id);if(index<0)return all;return [...all.slice(0,index+1),cloneMeal({...meal,name:`${meal.name} copia`}),...all.slice(index+1)]});setMessage('Refeicao duplicada.')}
-  function applyActiveStructureToAllDays(){const source=days[activeDay];if(!source)return;setDays(all=>all.map((day,index)=>index===activeDay?day:{...day,meals:source.meals.map(cloneMeal)}));setMessage('Estrutura de refeições aplicada aos demais dias.')}
-  function addItem(mealId:string,foodId:string,grams:number){const food=catalog.foods.find(f=>f.id===foodId);if(!food||grams<=0||!Number.isFinite(grams))return setMessage('Selecione alimento e gramas válidos.');setMeals(all=>all.map(m=>m.id===mealId?{...m,items:[...m.items,{id:crypto.randomUUID(),foodId:food.id,name:food.name,grams,nutrientsPer100g:food.nutrients}]}:m));void catalog.saveFoodPreference(foodId,{last_used_at:new Date().toISOString()});setMessage('')}
-  async function save(){
-    if(!patientId||!days.length||days.some(day=>!day.meals.length))return setMessage('Escolha o paciente e mantenha ao menos uma refeição em cada dia.')
-    setBusy(true);setMessage('');let planId='';const cleanup:{table:string;id:string}[]=[]
-    try{
-      const p=await supabase.from('plans').insert({organization_id:organizationId,patient_id:patientId,created_by:session.user.id,title:title.trim()||'Plano alimentar',status:'draft'}).select('id').single();if(p.error||!p.data)throw p.error??new Error('Falha no plano');planId=p.data.id
-      const v=await supabase.from('plan_versions').insert({organization_id:organizationId,plan_id:planId,version_no:1,created_by:session.user.id,change_summary:loadedDraft?'Cópia editada de rascunho':'Versão inicial',assistant_state:assistant}).select('id').single();if(v.error||!v.data)throw v.error??new Error('Falha na versão');cleanup.push({table:'plan_versions',id:v.data.id})
-      for(const [dayIndex,day] of days.entries()){
-        const d=await supabase.from('plan_days').insert({organization_id:organizationId,plan_version_id:v.data.id,day_index:dayIndex,label:day.label,kind:day.kind}).select('id').single();if(d.error||!d.data)throw d.error??new Error('Falha no dia');cleanup.push({table:'plan_days',id:d.data.id})
-        for(const [position,meal] of day.meals.entries()){
-          const m=await supabase.from('meals').insert({organization_id:organizationId,plan_day_id:d.data.id,position,label:meal.name}).select('id').single();if(m.error||!m.data)throw m.error??new Error('Falha na refeição');cleanup.push({table:'meals',id:m.data.id})
-          if(meal.items.length){const items=await supabase.from('meal_items').insert(meal.items.map((item,i)=>({organization_id:organizationId,meal_id:m.data.id,position:i,food_id:item.foodId??catalog.foods.find(f=>f.name===item.name)?.id,description:item.name,quantity:item.grams,unit:'g',grams:item.grams,nutrient_snapshot:item.nutrientsPer100g})));if(items.error)throw items.error}
-        }
-      }
-      setMessage('Plano salvo como novo rascunho, versão 1.');setDays([initialDay()]);setActiveDay(0);setLoadedDraft(null);setLoadedVersion('');setPlanStatus('draft');setLocked(false);setAssistant(initialAssistantState());await loadDrafts()
-    }catch(error){for(const row of cleanup.reverse())await supabase.from(row.table).delete().eq('id',row.id);if(planId)await supabase.from('plans').update({status:'archived',title:`[Falha revertida] ${title}`}).eq('id',planId);setMessage(`Falha revertida. ${error instanceof Error?error.message:''}`)}finally{setBusy(false)}
-  }
-
-  return <section className="nutrition-workspace">
-    <div className="section-tabs"><button className={tab==='catalog'?'active':''} onClick={()=>setTab('catalog')}>Catálogo próprio</button><button className={tab==='plan'?'active':''} onClick={()=>setTab('plan')}>Editor de plano</button></div>
-    {message&&<div className="notice" role="status">{message}</div>}
-    {recoverableDraft&&<div className="notice" role="status">Há um rascunho local salvo em {new Date(recoverableDraft.savedAt).toLocaleString('pt-BR')}. <button className="secondary" onClick={restoreLocalDraft}>Restaurar</button><button className="secondary" onClick={discardLocalDraft}>Descartar</button></div>}
-    {tab==='catalog'?<Catalog foods={catalog.foods} sources={catalog.sources} keys={macroKeys} labels={macroLabels} busy={catalog.busy} preferences={catalog.foodPreferences} addFood={catalog.addFood} saveFoodPreference={catalog.saveFoodPreference}/>:<div className={`plans-layout ${contextCollapsed?'context-collapsed':''} ${analysisCollapsed?'analysis-collapsed':''}`}>
-      <header className="plan-workspace-header">
-        <div><span className="eyebrow"><Sparkles/> Construtor de plano</span><h2>{title||'Novo plano alimentar'}</h2><p>Contexto, prescrição e análise reunidos para você decidir sem perder o fio da consulta.</p></div>
-        <EditorModeSwitch mode={editorMode} setMode={setEditorMode}/>
-      </header>
-      <aside className="plan-context" aria-label="Contexto do plano">
-        <button className="rail-toggle" aria-label={contextCollapsed?'Expandir contexto':'Recolher contexto'} onClick={()=>setContextCollapsed(value=>!value)}>{contextCollapsed?<LayoutPanelLeft/>:<ChevronLeft/>}</button>
-        {!contextCollapsed&&<><section className="panel plan-basics"><div className="panel-kicker"><UtensilsCrossed/> Contexto clínico</div><label>Paciente<select value={patientId} disabled={locked} onChange={e=>setPatientId(e.target.value)}><option value="">Selecione</option>{patients.map(p=><option key={p.id} value={p.id}>{p.anonymous_code} · {p.full_name}</option>)}</select></label><label>Título<input value={title} readOnly={locked} onChange={e=>setTitle(e.target.value)}/></label></section>
-        <aside className="draft-panel panel"><header><div><h2>Planos</h2><small>{drafts.length} plano(s)</small></div><button aria-label="Atualizar planos" onClick={()=>void loadDrafts()}><RefreshCw/></button></header><div className="template-box"><h3>Começar plano</h3><button className="secondary" onClick={startBlankPlan}><Plus/> Em branco</button><button className="secondary" disabled={!loadedDraft} onClick={copyOpenDraft}><Copy/> Usar plano aberto como base</button></div><ModelGallery templates={templates} filters={modelFilters} setFilters={setModelFilters} applyBuiltInModel={applyBuiltInModel} requestApplyTemplate={requestApplyTemplate}/>{loadingDrafts?<p className="muted">Carregando planos...</p>:<div className="draft-list">{drafts.map(draft=><button className={loadedDraft===draft.id?'active':''} key={draft.id} onClick={()=>openDraft(draft)}><span><strong>{draft.title}</strong><small>{patients.find(p=>p.id===draft.patientId)?.full_name??'Paciente'} · {draft.days.length} dia(s) · v{draft.version}</small><time><b className={`plan-status ${draft.status}`}>{draft.status==='published'?'Publicado':draft.status==='reviewed'?'Revisado':'Rascunho'}</b> · {new Date(draft.updatedAt).toLocaleDateString('pt-BR')}</time></span><ChevronRight/></button>)}{!drafts.length&&<p className="muted">Nenhum plano salvo.</p>}<div className="template-box"><h3>Salvar modelo</h3><button className="secondary" disabled={!loadedDraft} onClick={()=>void saveTemplate('personal')}>Salvar pessoal</button><button className="secondary" disabled={!loadedDraft} onClick={()=>void saveTemplate('organization')}>Compartilhar com clínica</button></div></div>}</aside>
-        <PlanAssistant state={assistant} setState={setAssistant} locked={locked}/></>}
-      </aside>
-      <main className={`plan-editor ${editorMode}`}>
-        <div className="day-tabs" role="tablist" aria-label="Dias do plano">{days.map((day,index)=><button role="tab" aria-selected={activeDay===index} className={activeDay===index?'active':''} key={day.id} onClick={()=>setActiveDay(index)}>{day.label}</button>)}{!locked&&<><button onClick={()=>{setDays(all=>[...all,{...initialDay(),label:`Dia ${all.length+1}`}]);setActiveDay(days.length)}}><Plus/> Dia</button><button className="secondary" onClick={duplicateActiveDay}><Copy/> Duplicar dia</button></>}</div>
-        <div className="plan-export-actions"><button className="secondary" onClick={()=>{if(!printClinicalDocument(title||'Plano alimentar',patients.find(p=>p.id===patientId)?.full_name??'',formatPlanForExport(title||'Plano alimentar',days,targets)))setMessage('Permita janelas pop-up para exportar.')}}>Imprimir plano</button><button className="secondary" onClick={()=>setShowShoppingList(value=>!value)}>{showShoppingList?'Ocultar lista de compras':'Lista de compras'}</button></div>
-        {showShoppingList&&<section className="panel plan-shopping-list"><h3>Lista de compras</h3>{shoppingList.length?<ul>{shoppingList.map(item=><li key={item.name}>{item.name} - {item.grams.toLocaleString('pt-BR')} g</li>)}</ul>:<p className="muted">Nenhum item nas refeições ainda.</p>}{shoppingList.length>0&&<button className="secondary" onClick={()=>{if(!printClinicalDocument('Lista de compras',title||'Plano alimentar',shoppingList.map(item=>`${item.name} - ${item.grams.toLocaleString('pt-BR')} g`).join('\n')))setMessage('Permita janelas pop-up para exportar.')}}>Imprimir lista</button>}</section>}
-        {meals.map((meal,index)=><EditableMealCard key={meal.id} meal={meal} index={index} foods={catalog.foods} setMeals={setMeals} addItem={addItem} duplicateMeal={duplicateMeal} readOnly={locked}/>)}<MealDistributionInputs meals={meals} assistant={assistant} setAssistant={setAssistant} locked={locked}/>
-        {planChanges.length>0&&<section className="panel plan-comparison"><h3>Alterações desde versão aberta</h3><ul>{planChanges.map(change=><li key={change}>{change}</li>)}</ul>{nutritionChanges.length>0&&<><h4>Impacto nutricional do plano</h4><ul>{nutritionChanges.map(change=><li key={change}>{change}</li>)}</ul></>}</section>}{!locked&&<div className="editor-actions"><button className="secondary" onClick={()=>setMeals(m=>[...m,{id:crypto.randomUUID(),name:`Refeição ${m.length+1}`,items:[]}])}><Plus/>Adicionar refeição</button><button className="secondary" disabled={days.length<2} onClick={applyActiveStructureToAllDays}><Copy/>Aplicar refeições a todos os dias</button><span className="publication-actions"><button className="secondary" disabled={busy||!loadedDraft||!canReviewPlan(assistant)} onClick={()=>void review()}>Marcar como revisado</button><button className="primary" disabled={busy||!canPublishPlan(assistant,planStatus)} onClick={()=>void publish()}>{confirmSubstitutionWarning?'Confirmar publicação':'Publicar'}</button><button className="primary" disabled={busy} onClick={()=>void save()}>{busy?'Salvando...':loadedDraft?'Salvar como novo rascunho':'Salvar rascunho'}</button></span></div>}
-      </main>
-      <aside className="plan-analysis" aria-label="Análise nutricional">
-        <button className="rail-toggle" aria-label={analysisCollapsed?'Expandir análise':'Recolher análise'} onClick={()=>setAnalysisCollapsed(value=>!value)}>{analysisCollapsed?<PanelRightClose/>:<ChevronRight/>}</button>
-        {!analysisCollapsed&&<><section className="panel target-panel" aria-hidden={editorMode==='quick'}><header><div><h2>Metas nutricionais</h2><small>Status: {planStatus==='published'?'Publicado':planStatus==='reviewed'?'Revisado':'Rascunho'}</small></div></header><div>{[['energyKcal','Energia (kcal)'],['proteinG','Proteína (g)'],['carbohydrateG','Carboidrato (g)'],['fatG','Gordura (g)'],['fiberG','Fibra (g)'],['waterMl','Água (ml)']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="0.1" value={targets[key]??0} disabled={locked} onChange={e=>setTargets(all=>({...all,[key]:Number(e.target.value)}))}/></label>)}</div><TargetRangeInputs state={assistant} setState={setAssistant} setTargets={setTargets} locked={locked}/></section>
-        <section className="live-totals" aria-hidden={editorMode==='quick'}>{macroKeys.map(k=>{const perKg=k==='energyKcal'?null:gramsPerKg(totals[k],patientWeightKg);return <div key={k}><small>{macroLabels[k]}</small><strong>{totals[k].toLocaleString('pt-BR')} {k==='energyKcal'?'kcal':'g'}</strong>{perKg!==null&&<small>{perKg.toLocaleString('pt-BR')} g/kg</small>}</div>})}</section>
-        {rangeIssues.length>0&&<section className="panel range-issues" role="status"><h3>Faixas a revisar</h3><ul>{rangeIssues.map(issue=><li key={issue}>{issue}</li>)}</ul><label>Justificativa clínica<textarea value={assistant.rangeJustification??''} disabled={locked} onChange={event=>setAssistant(current=>({...current,rangeJustification:event.target.value}))}/></label></section>}<TechnicalChecklist assistant={assistant} canReview={canReviewPlan(assistant)} hidden={editorMode==='quick'}/></>}
-      </aside>
-    </div>}
-    {applyDialog&&<ApplyTemplateDialog name={applyDialog.name} onCancel={()=>setApplyDialog(null)} onConfirm={weekdays=>{const id=applyDialog.templateId;setApplyDialog(null);void copyTemplate(id,weekdays)}}/>}
-  </section>
-}
-
-function EditorModeSwitch({mode,setMode}:{mode:EditorMode;setMode:(mode:EditorMode)=>void}){
-  return <div className="editor-mode panel" role="tablist" aria-label="Modo do editor"><button role="tab" aria-selected={mode==='quick'} className={mode==='quick'?'active':''} onClick={()=>setMode('quick')}>Consulta rapida</button><button role="tab" aria-selected={mode==='technical'} className={mode==='technical'?'active':''} onClick={()=>setMode('technical')}>Tecnico</button></div>
-}
-
-function TechnicalChecklist({assistant,canReview,hidden}:{assistant:PlanAssistantState;canReview:boolean;hidden:boolean}){
-  const pending=assistantSteps.filter(step=>step!=='publish'&&!assistant.completedSteps.includes(step))
-  return <section className="panel technical-checklist" aria-hidden={hidden}><h2>Pendencias tecnicas</h2>{canReview?<p className="muted">Assistente pronto para revisao.</p>:<ul>{pending.map(step=><li key={step}>{assistantLabels[step]}</li>)}</ul>}</section>
-}
-
-function TargetRangeInputs({state,setState,setTargets,locked}:{state:PlanAssistantState;setState:React.Dispatch<React.SetStateAction<PlanAssistantState>>;setTargets:React.Dispatch<React.SetStateAction<Record<string,number>>>;locked:boolean}){
-  const fields:[NutrientKey,string][]=[['energyKcal','Energia'],['proteinG','Proteína'],['carbohydrateG','Carboidrato'],['fatG','Gordura'],['fiberG','Fibra']]
-  const change=(key:NutrientKey,field:'min'|'target'|'max',value:number)=>{setState(current=>({...current,targetRanges:{...current.targetRanges,[key]:{min:current.targetRanges[key]?.min??0,target:current.targetRanges[key]?.target??0,max:current.targetRanges[key]?.max??0,[field]:value}}}));if(field==='target')setTargets(current=>({...current,[key]:value}))}
-  return <fieldset className="target-ranges"><legend>Faixas aceitáveis</legend>{fields.map(([key,label])=>{const range=state.targetRanges[key]??{min:0,target:0,max:0};return <div key={key}><strong>{label}</strong>{(['min','target','max'] as const).map(field=><label key={field}>{field==='min'?'Mín.':field==='target'?'Alvo':'Máx.'}<input aria-label={`${label} ${field}`} type="number" min="0" step="0.1" disabled={locked} value={range[field]} onChange={event=>change(key,field,Number(event.target.value))}/></label>)}</div>})}</fieldset>
-}
-
-function MealDistributionInputs({meals,assistant,setAssistant,locked}:{meals:Meal[];assistant:PlanAssistantState;setAssistant:React.Dispatch<React.SetStateAction<PlanAssistantState>>;locked:boolean}){
-  if(!meals.length)return null
-  const total=meals.reduce((sum,meal)=>sum+(assistant.mealDistributions[meal.id]??0),0)
-  return <section className="panel meal-distribution"><h3>Distribuição entre refeições</h3><p className="muted">Defina a participação da energia diária. Total: {total}%.</p>{meals.map(meal=><label key={meal.id}>{meal.name}<input aria-label={`Distribuição de ${meal.name}`} type="number" min="0" max="100" step="1" disabled={locked} value={assistant.mealDistributions[meal.id]??0} onChange={event=>setAssistant(current=>({...current,mealDistributions:{...current.mealDistributions,[meal.id]:Number(event.target.value)||0}}))}/>%</label>)}</section>
-}
-
-function PlanAssistant({state,setState,locked}:{state:PlanAssistantState;setState:React.Dispatch<React.SetStateAction<PlanAssistantState>>;locked:boolean}){
-  const index=assistantSteps.indexOf(state.currentStep)
-  const move=(step:PlanAssistantStep)=>setState(current=>({...current,currentStep:step}))
-  const complete=()=>setState(current=>completeAssistantStep(current,current.currentStep))
-  return <section className="panel plan-assistant"><header><div><h2>Assistente do plano</h2><small>Etapa atual: {assistantLabels[state.currentStep]}</small></div></header><div className="assistant-steps">{assistantSteps.map(step=><button key={step} className={state.currentStep===step?'active':state.completedSteps.includes(step)?'done':''} disabled={locked} onClick={()=>move(step)}>{assistantLabels[step]}</button>)}</div><label>Objetivo clínico<input value={state.objective} readOnly={locked} onChange={e=>setState(current=>({...current,objective:e.target.value}))} placeholder="Ex.: recomposição corporal com melhora de rotina"/></label><div className="preset-grid">{clinicalPresets.map(preset=><label key={preset} className="check-option"><input type="checkbox" checked={state.clinicalPresets.includes(preset)} disabled={locked} onChange={()=>setState(current=>toggleClinicalPreset(current,preset))}/>{clinicalPresetLabels[preset]}</label>)}</div><label>Micronutrientes prioritarios<textarea value={state.priorityMicronutrients.join(', ')} readOnly={locked} onChange={e=>setState(current=>({...current,priorityMicronutrients:e.target.value.split(',').map(item=>item.trim()).filter(Boolean)}))} placeholder="Ex.: Ferro, Calcio, Vitamina D"/></label><div className="visibility-grid"><strong>Visibilidade no portal</strong><label className="check-option"><input type="checkbox" checked={state.visibility.showTotalKcal} disabled={locked} onChange={e=>setState(current=>({...current,visibility:{...current.visibility,showTotalKcal:e.target.checked}}))}/>Kcal totais</label><label className="check-option"><input type="checkbox" checked={state.visibility.showTotalMacros} disabled={locked} onChange={e=>setState(current=>({...current,visibility:{...current.visibility,showTotalMacros:e.target.checked}}))}/>Macros totais</label><label className="check-option"><input type="checkbox" checked={state.visibility.showMealCalculations} disabled={locked} onChange={e=>setState(current=>({...current,visibility:{...current.visibility,showMealCalculations:e.target.checked}}))}/>Calculos por refeicao</label><label className="check-option"><input type="checkbox" checked={state.visibility.showDiary} disabled={locked} onChange={e=>setState(current=>({...current,visibility:{...current.visibility,showDiary:e.target.checked}}))}/>Diário alimentar</label></div>{!locked&&<div className="assistant-actions"><button className="secondary" disabled={index<=0} onClick={()=>move(assistantSteps[index-1])}>Voltar</button><button className="secondary" onClick={complete}>Concluir etapa</button><button className="secondary" disabled={index>=assistantSteps.length-1} onClick={()=>move(assistantSteps[index+1])}>Avançar</button></div>}</section>
-}
-
-const MODEL_TAG_LABELS: Record<string,string> = {
-  mediterranean:'Mediterrânea', dash:'DASH', ketogenic:'Cetogênica', low_carb:'Low Carb', vegan:'Vegana', vegetarian:'Vegetariana', paleo:'Paleolítica',
-  anti_inflammatory:'Anti-inflamatória', intermittent_fasting:'Jejum intermitente', enteral:'Enteral', glycemic_load:'Carga glicêmica',
-  hypocaloric:'Hipocalórica', high_protein:'Hiperproteica', glycemic_control:'Controle glicêmico', hypertension:'Hipertensão', renal:'Renal',
-  gestational:'Gestação', hypertrophy:'Hipertrofia', dyslipidemia:'Dislipidemia', menopause:'Menopausa', pediatric:'Pediatria', elderly:'Idosos',
-  gastrointestinal:'Gastrointestinal', gout:'Ácido úrico', food_allergy:'Alergia alimentar', swallowing:'Deglutição', perioperative:'Perioperatório',
-  aesthetic:'Estética', weight_loss:'Emagrecimento',
-}
-const modelTagLabel=(tag:string)=>MODEL_TAG_LABELS[tag]??tag
-const WEEKDAY_OPTIONS=[{code:'mon',label:'Segunda-feira'},{code:'tue',label:'Terça-feira'},{code:'wed',label:'Quarta-feira'},{code:'thu',label:'Quinta-feira'},{code:'fri',label:'Sexta-feira'},{code:'sat',label:'Sábado'},{code:'sun',label:'Domingo'}]
-
-function ApplyTemplateDialog({name,onCancel,onConfirm}:{name:string;onCancel:()=>void;onConfirm:(weekdays:string[])=>void}){
-  const [selected,setSelected]=useState<string[]>(WEEKDAY_OPTIONS.map(option=>option.code))
-  const toggle=(code:string)=>setSelected(current=>current.includes(code)?current.filter(item=>item!==code):[...current,code])
-  return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Aplicar modelo ${name}`} onClick={onCancel}>
-    <div className="modal" onClick={event=>event.stopPropagation()}>
-      <header><h2>Aplicar {name}</h2><button aria-label="Fechar" onClick={onCancel}><X/></button></header>
-      <p className="muted">Escolha os dias da semana do plano. O rascunho é criado para revisão: você ajusta os alimentos conforme o paciente e publica depois.</p>
-      <div className="weekday-grid">{WEEKDAY_OPTIONS.map(option=><label key={option.code} className="check-option"><input type="checkbox" checked={selected.includes(option.code)} onChange={()=>toggle(option.code)}/>{option.label}</label>)}</div>
-      <div className="actions"><button className="secondary" onClick={onCancel}>Cancelar</button><button className="primary" disabled={!selected.length} onClick={()=>onConfirm(selected)}>Aplicar {selected.length} dia(s)</button></div>
-    </div>
-  </div>
-}
-
-function ModelGallery({templates,filters,setFilters,applyBuiltInModel,requestApplyTemplate}:{templates:PlanTemplate[];filters:Partial<ModelDimensions>;setFilters:React.Dispatch<React.SetStateAction<Partial<ModelDimensions>>>;applyBuiltInModel:(model:(typeof builtInPlanModels)[number])=>void;requestApplyTemplate:(id:string,name:string)=>void}){
-  const models=[...builtInPlanModels,...templates.map(template=>({id:template.id,name:template.name,summary:template.rules?.guidance?.[0]??'Modelo salvo pela equipe.',dimensions:template.dimensions??{approaches:template.tags??[],objectives:template.objective?[template.objective]:[],restrictions:[],preferences:[],contexts:[]},rules:template.rules??{targets:{},guidance:[]},templateId:template.id,scope:template.scope}))].filter(model=>matchesModel(model,filters))
-  const toggle=(key:keyof ModelDimensions,value:string)=>setFilters(current=>({...current,[key]:current[key]?.includes(value)?current[key]?.filter(item=>item!==value):[...(current[key]??[]),value]}))
-  const choices:{key:keyof ModelDimensions;label:string;values:string[]}[]=[{key:'approaches',label:'Abordagem',values:['Brasileira equilibrada','Mediterrânea','DASH','Vegetariana','Vegana','Flexível','Esportiva']},{key:'objectives',label:'Objetivo',values:['Emagrecimento','Hipertrofia','Desempenho','Controle glicêmico','Baixo custo','Adesão']},{key:'contexts',label:'Contexto',values:['baixo custo','rotina corrida','cultura brasileira']}]
-  return <section className="model-gallery" aria-label="Galeria de modelos"><header><div><span className="eyebrow">Modelos combináveis</span><h3>Aplicar modelo</h3></div><small>{models.length} opção(ões)</small></header>{choices.map(group=><fieldset key={group.key}><legend>{group.label}</legend>{group.values.map(value=><label key={value}><input type="checkbox" checked={filters[group.key]?.includes(value)??false} onChange={()=>toggle(group.key,value)}/>{value}</label>)}</fieldset>)}<div className="model-cards">{models.map(model=>{const templateId='templateId' in model&&typeof model.templateId==='string'?model.templateId:null;return <article key={model.id}><span className="catalog-badge">{'scope' in model&&model.scope==='personal'?'Pessoal':'Modelo'}</span><strong>{model.name}</strong><small>{model.summary}</small><em>{modelTagLabel(model.dimensions.approaches[0]??'Flexível')} · {modelTagLabel(model.dimensions.objectives[0]??'Personalizável')}</em>{'requiredContext' in model&&model.requiredContext?.length&&<small>Antes de usar: {model.requiredContext.join(' · ')}</small>}{'limits' in model&&model.limits?.map(limit=><small key={limit}>Limite: {limit}</small>)}{'sources' in model&&model.sources?.length&&<small>Fonte: {model.sources.join(' · ')}</small>}<button className="secondary" onClick={()=>templateId?requestApplyTemplate(templateId,model.name):applyBuiltInModel(model)}>Aplicar</button></article>})}{!models.length&&<p className="muted">Nenhum modelo corresponde aos filtros.</p>}</div></section>
-}
-
-function Catalog({foods,sources,keys,labels,busy,preferences,addFood,saveFoodPreference}:{foods:CatalogFood[];sources:FoodSource[];keys:NutrientKey[];labels:Record<NutrientKey,string>;busy:boolean;preferences:FoodPreference[];addFood:(event:FormEvent<HTMLFormElement>)=>Promise<void>;saveFoodPreference:(foodId:string,change:Partial<Pick<FoodPreference,'is_favorite'|'last_used_at'>>)=>Promise<void>}){
-  const [kind,setKind]=useState<CatalogKind>('food')
-  const [query,setQuery]=useState(''),[culturalTag,setCulturalTag]=useState(''),[restrictionTag,setRestrictionTag]=useState(''),[preferenceTag,setPreferenceTag]=useState(''),[availabilityTag,setAvailabilityTag]=useState(''),[costBand,setCostBand]=useState(''),[onlyFavorites,setOnlyFavorites]=useState(false),[onlyRecent,setOnlyRecent]=useState(false)
-  const kindLabels:Record<CatalogKind,string>={food:'Alimento',preparation:'Preparação',combination:'Combinação'}
-  const values=(field:keyof Pick<CatalogFood,'culturalTags'|'restrictionTags'|'preferenceTags'|'availabilityTags'>)=>[...new Set(foods.flatMap(food=>food[field]))].sort((a,b)=>a.localeCompare(b,'pt-BR'))
-  const filteredFoods=useMemo(()=>foods.filter(food=>{const pref=preferences.find(item=>item.food_id===food.id);return matchesCatalogSearch(food,query)&&(!culturalTag||food.culturalTags.includes(culturalTag))&&(!restrictionTag||food.restrictionTags.includes(restrictionTag))&&(!preferenceTag||food.preferenceTags.includes(preferenceTag))&&(!availabilityTag||food.availabilityTags.includes(availabilityTag))&&(!costBand||food.costBand===costBand)&&(!onlyFavorites||pref?.is_favorite)&&(!onlyRecent||Boolean(pref?.last_used_at))}),[foods,preferences,query,culturalTag,restrictionTag,preferenceTag,availabilityTag,costBand,onlyFavorites,onlyRecent])
-  return <div className="nutrition-grid catalog-workspace">
-    <section className="panel catalog-form">
-      <span className="eyebrow">Catálogo estruturado</span><h2>Novo item</h2>
-      <div className="catalog-kind" role="radiogroup" aria-label="Tipo do item">{(Object.keys(kindLabels) as CatalogKind[]).map(value=><button type="button" role="radio" aria-checked={kind===value} className={kind===value?'active':''} key={value} onClick={()=>setKind(value)}>{kindLabels[value]}</button>)}</div>
-      <form onSubmit={addFood}>
-        <input type="hidden" name="catalogKind" value={kind}/>
-        <label>Nome<input name="name" required minLength={2}/></label>
-        <label>Estado ou preparo<input name="state" placeholder="Ex.: cozido, grelhado"/></label>
-        <fieldset><legend>Descoberta no catálogo</legend><label>Sinônimos e nomes populares<input name="searchTerms" placeholder="Ex.: aipim, macaxeira"/><small>Separe os termos por vírgula.</small></label><div className="catalog-tags"><label>Região ou cultura<input name="culturalTags" placeholder="Ex.: Nordeste"/></label><label>Restrição<input name="restrictionTags" placeholder="Ex.: sem glúten"/></label><label>Preferência<input name="preferenceTags" placeholder="Ex.: vegetariano"/></label><label>Disponibilidade<input name="availabilityTags" placeholder="Ex.: safra local"/></label><label>Custo<select name="costBand" defaultValue=""><option value="">Não informado</option><option value="low">Baixo</option><option value="medium">Médio</option><option value="high">Alto</option></select></label></div></fieldset>
-        <fieldset><legend>Procedência e revisão</legend><label>Fonte da base<select name="sourceId" defaultValue=""><option value="">Declaração própria / sem base vinculada</option>{sources.map(source=><option value={source.id} key={source.id}>{source.name} · {source.dataset_version}</option>)}</select></label><label>Referência, versão ou observação<input name="sourceReference" placeholder="Ex.: tabela consultada em 24/07"/></label><div className="yield-inputs"><label>Data da consulta<input name="sourceAccessedOn" type="date"/></label><label>Confiabilidade declarada<select name="sourceReliability" defaultValue=""><option value="">Não informada</option>{[1,2,3,4,5].map(value=><option value={value} key={value}>{value}/5</option>)}</select></label></div><label className="check-option"><input name="reviewed" type="checkbox"/>Dados revisados por mim</label></fieldset>
-        <label>Render WebP no repositório<input name="renderPath" placeholder="/food-renders/arroz-integral.webp" pattern="/food-renders/.+\\.webp"/><small>Opcional. Use somente caminho versionado em <code>public/food-renders</code>.</small></label>
-        {kind==='food'?<><p className="muted">Valores conhecidos por 100 g.</p><div className="macro-inputs">{keys.map(key=><label key={key}>{labels[key]} ({key==='energyKcal'?'kcal':'g'})<input name={key} type="number" min="0" step="0.01" required/></label>)}</div></>:<>
-          <div className="yield-inputs"><label>Rendimento total (g)<input name="yieldGrams" type="number" min=".01" step=".01" required/></label><label>Número de porções<input name="portionCount" type="number" min=".01" step=".01" required/></label></div><div className="yield-inputs"><label>Medida caseira<input name="householdMeasureLabel" placeholder="Ex.: 1 concha"/></label><label>Peso da medida (g)<input name="householdMeasureGrams" type="number" min=".01" step=".01" placeholder="Ex.: 80"/></label></div><small>Porção em gramas é calculada pelo rendimento. Use medida caseira somente com peso registrado.</small>
-          <fieldset className="component-picker"><legend>Componentes e quantidades</legend>{foods.map(food=><label key={food.id}><span><strong>{food.name}</strong><small>{kindLabels[food.catalogKind]}</small></span><input aria-label={`Gramas de ${food.name}`} name={`component-${food.id}`} type="number" min="0" step=".01" placeholder="0 g"/></label>)}{!foods.length&&<p className="muted">Cadastre ao menos um alimento antes de criar {kindLabels[kind].toLowerCase()}.</p>}</fieldset>
-        </>}
-        <button className="primary" disabled={busy||kind!=='food'&&!foods.length}>{busy?'Salvando...':`Cadastrar ${kindLabels[kind].toLowerCase()}`}</button>
-      </form>
+  return (
+    <section className="nutrition-workspace">
+      <div className="section-tabs">
+        <button className={tab === 'catalog' ? 'active' : ''} onClick={() => setTab('catalog')}>
+          Catálogo próprio
+        </button>
+        <button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}>
+          Editor de plano
+        </button>
+      </div>
+      {message && (
+        <div className="notice" role="status">
+          {message}
+        </div>
+      )}
+      {planDraft.recoverableDraft && (
+        <div className="notice" role="status">
+          Há um rascunho local salvo em {new Date(planDraft.recoverableDraft.savedAt).toLocaleString('pt-BR')}.{' '}
+          <button className="secondary" onClick={planDraft.restoreLocalDraft}>
+            Restaurar
+          </button>
+          <button className="secondary" onClick={planDraft.discardLocalDraft}>
+            Descartar
+          </button>
+        </div>
+      )}
+      {tab === 'catalog' ? (
+        <NutritionCatalog
+          foods={catalog.foods}
+          sources={catalog.sources}
+          keys={macroKeys}
+          labels={macroLabels}
+          busy={catalog.busy}
+          preferences={catalog.foodPreferences}
+          addFood={catalog.addFood}
+          saveFoodPreference={catalog.saveFoodPreference}
+        />
+      ) : (
+        <PlanEditor catalog={catalog} planDraft={planDraft} patients={patients} organizationId={organizationId} setMessage={setMessage} />
+      )}
     </section>
-    <section className="panel"><header className="catalog-header"><div><span className="eyebrow">Biblioteca da clínica</span><h2>Itens cadastrados</h2></div><strong>{filteredFoods.length}</strong></header><div className="catalog-filters"><label>Buscar por nome, sinônimo ou preparo<input aria-label="Buscar no catálogo" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Ex.: macaxeira, sem glúten"/></label><div>{([['Região/cultura',culturalTag,setCulturalTag,'culturalTags'],['Restrição',restrictionTag,setRestrictionTag,'restrictionTags'],['Preferência',preferenceTag,setPreferenceTag,'preferenceTags'],['Disponibilidade',availabilityTag,setAvailabilityTag,'availabilityTags']] as const).map(([label,value,setValue,field])=><label key={field}>{label}<select value={value} onChange={event=>setValue(event.target.value)}><option value="">Todas</option>{values(field).map(option=><option key={option} value={option}>{option}</option>)}</select></label>)}<label>Custo<select value={costBand} onChange={event=>setCostBand(event.target.value)}><option value="">Todos</option><option value="low">Baixo</option><option value="medium">Médio</option><option value="high">Alto</option></select></label></div><span><button className={onlyFavorites?'active':''} aria-pressed={onlyFavorites} onClick={()=>setOnlyFavorites(value=>!value)}><Heart/>Favoritos</button><button className={onlyRecent?'active':''} aria-pressed={onlyRecent} onClick={()=>setOnlyRecent(value=>!value)}><History/>Recentes</button></span></div><div className="food-list">{filteredFoods.map(food=>{const preference=preferences.find(item=>item.food_id===food.id),serving=deriveServingNutrients(food.nutrients,food.availableNutrients,food.servingGrams);return <article key={food.id} className="food-card">{food.renderPath?<img className="food-render" src={food.renderPath} alt={`Render de ${food.name}`}/>:<div className="food-render-placeholder" aria-label={`Sem render para ${food.name}`}>{food.name.slice(0,1)}</div>}<div><div className="food-title"><span className={`catalog-badge ${food.catalogKind}`}>{kindLabels[food.catalogKind]}</span><strong>{food.name}</strong><button className={preference?.is_favorite?'favorite active':'favorite'} aria-label={`${preference?.is_favorite?'Remover':'Adicionar'} ${food.name} dos favoritos`} aria-pressed={preference?.is_favorite??false} onClick={()=>void saveFoodPreference(food.id,{is_favorite:!preference?.is_favorite})}><Heart/></button></div><small>{food.preparationState} · {describeCatalogServing(food)}{food.portionCount?` · rende ${food.portionCount} porções`:''}</small><div>{food.availableNutrients.includes('energyKcal')?`${food.nutrients.energyKcal.toLocaleString('pt-BR')} kcal`:'Energia não informada'} · P {food.availableNutrients.includes('proteinG')?`${food.nutrients.proteinG.toLocaleString('pt-BR')} g`:'—'} · C {food.availableNutrients.includes('carbohydrateG')?`${food.nutrients.carbohydrateG.toLocaleString('pt-BR')} g`:'—'} · G {food.availableNutrients.includes('fatG')?`${food.nutrients.fatG.toLocaleString('pt-BR')} g`:'—'}</div>{food.servingGrams&&<small>Porção: {serving.energyKcal.toLocaleString('pt-BR')} kcal · P {serving.proteinG.toLocaleString('pt-BR')} g · C {serving.carbohydrateG.toLocaleString('pt-BR')} g · G {serving.fatG.toLocaleString('pt-BR')} g</small>}<small>Fonte: {food.source?`${food.source.name} · ${food.source.dataset_version}`:food.sourceReference??'não informada'} · revisão: {food.reviewStatus==='reviewed'?'revisado':'pendente'}</small>{food.components.length>0&&<small>{food.components.length} componente(s)</small>}</div></article>})}{!filteredFoods.length&&<p className="muted">Nenhum item corresponde aos filtros.</p>}</div></section>
-  </div>
+  )
 }
-
-
-function EditableMealCard({meal,index,foods,setMeals,addItem,duplicateMeal,readOnly}:{meal:Meal;index:number;foods:CatalogFood[];setMeals:React.Dispatch<React.SetStateAction<Meal[]>>;addItem:(m:string,f:string,g:number)=>void;duplicateMeal:(meal:Meal)=>void;readOnly:boolean}){const[food,setFood]=useState(''),[foodQuery,setFoodQuery]=useState(''),[grams,setGrams]=useState(100),total=totalDay([meal]),filteredFoods=foods.filter(f=>f.name.toLowerCase().includes(foodQuery.trim().toLowerCase()));return <section className="panel meal-editor"><div className="meal-heading"><input aria-label={`Nome da refeição ${index+1}`} value={meal.name} readOnly={readOnly} onChange={e=>setMeals(all=>all.map(m=>m.id===meal.id?{...m,name:e.target.value}:m))}/>{!readOnly&&<><button aria-label={`Duplicar ${meal.name}`} onClick={()=>duplicateMeal(meal)}><Copy/></button><button aria-label="Remover refeição" onClick={()=>setMeals(all=>all.filter(m=>m.id!==meal.id))}><Trash2/></button></>}</div>{!readOnly&&<div className="add-food-row"><input aria-label="Buscar alimento" value={foodQuery} onChange={e=>setFoodQuery(e.target.value)} placeholder="Buscar alimento"/><select aria-label="Alimento" value={food} onChange={e=>setFood(e.target.value)}><option value="">Escolha um alimento</option>{filteredFoods.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select><input aria-label="Gramas" type="number" min=".01" step=".01" value={grams} onChange={e=>setGrams(Number(e.target.value))}/><button className="secondary" onClick={()=>{addItem(meal.id,food,grams);setFood('')}}><Plus/>Item</button></div>}{meal.items.map(item=><div className="meal-item" key={item.id}><span>{readOnly?<strong>{item.name}</strong>:<select aria-label={`Alimento de ${item.name}`} value={item.foodId??foods.find(f=>f.name===item.name)?.id??''} onChange={e=>{const selected=foods.find(f=>f.id===e.target.value);if(selected)setMeals(all=>all.map(m=>m.id===meal.id?{...m,items:m.items.map(i=>i.id===item.id?{...i,foodId:selected.id,name:selected.name,nutrientsPer100g:selected.nutrients}:i)}:m))}}>{foods.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>}{readOnly?<small>{item.grams} g</small>:<input aria-label={`Gramas de ${item.name}`} type="number" min=".01" step=".01" value={item.grams} onChange={e=>setMeals(all=>all.map(m=>m.id===meal.id?{...m,items:m.items.map(i=>i.id===item.id?{...i,grams:Number(e.target.value)}:i)}:m))}/>}</span>{!readOnly&&<button aria-label={`Remover ${item.name}`} onClick={()=>setMeals(all=>all.map(m=>m.id===meal.id?{...m,items:m.items.filter(i=>i.id!==item.id)}:m))}><Trash2/></button>}</div>)}<div className="meal-subtotal">{total.energyKcal} kcal · P {total.proteinG} g · C {total.carbohydrateG} g · G {total.fatG} g</div></section>}

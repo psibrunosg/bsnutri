@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { catalogRenderSrc, deriveCatalogNutrients, foodRenderSrc, type CatalogComponent, type CatalogKind } from './catalog'
-import { emptyNutrients, type NutrientKey, type Nutrients } from './nutrition'
+import { emptyNutrients, nutrientKeys, type NutrientKey, type Nutrients } from './nutrition'
 import { supabase } from './supabase'
 
 export type FoodSource = { id:string; code:string; name:string; dataset_version:string }
@@ -12,9 +12,22 @@ type FoodRow = { id: string; name: string; preparation_state: string; catalog_ki
 type ComponentRow = { parent_food_id:string; component_food_id:string; grams:number; position:number }
 
 export const macroKeys: NutrientKey[] = ['energyKcal','proteinG','carbohydrateG','fatG']
-export const macroLabels: Record<NutrientKey,string> = { energyKcal:'Energia',proteinG:'Proteína',carbohydrateG:'Carboidrato',fatG:'Gordura',fiberG:'Fibra',sodiumMg:'Sódio',calciumMg:'Cálcio',ironMg:'Ferro',potassiumMg:'Potássio',vitaminCMg:'Vitamina C' }
+export const lipidKeys: NutrientKey[] = ['saturatedFatG','monounsaturatedFatG','polyunsaturatedFatG','transFatG']
+export const vitaminKeys: NutrientKey[] = ['vitaminCMg','vitaminB1Mg','vitaminB2Mg','vitaminB3Mg','vitaminB6Mg','vitaminB9Mcg','vitaminB12Mcg']
+export const mineralKeys: NutrientKey[] = ['sodiumMg','calciumMg','ironMg','potassiumMg','fiberG']
+export const macroLabels: Record<NutrientKey,string> = {
+  energyKcal:'Energia',proteinG:'Proteína',carbohydrateG:'Carboidrato',fatG:'Gordura',fiberG:'Fibra',
+  sodiumMg:'Sódio',calciumMg:'Cálcio',ironMg:'Ferro',potassiumMg:'Potássio',vitaminCMg:'Vitamina C',
+  saturatedFatG:'Gordura Saturada',monounsaturatedFatG:'Gordura Monoinsaturada',polyunsaturatedFatG:'Gordura Poli-insaturada',transFatG:'Gordura Trans',
+  vitaminB1Mg:'Vitamina B1 (Tiamina)',vitaminB2Mg:'Vitamina B2 (Riboflavina)',vitaminB3Mg:'Vitamina B3 (Niacina)',vitaminB6Mg:'Vitamina B6 (Piridoxina)',vitaminB9Mcg:'Vitamina B9 (Folato)',vitaminB12Mcg:'Vitamina B12 (Cobalamina)',
+}
 
-const aliases: Record<NutrientKey, string[]> = { energyKcal: ['energy_kcal','energy','kcal'], proteinG: ['protein_g','protein'], carbohydrateG: ['carbohydrate_g','carbohydrate','carbs'], fatG: ['fat_g','fat','lipids'], fiberG: ['fiber_g','fiber'], sodiumMg: ['sodium_mg','sodium'], calciumMg: ['calcium_mg','calcium'], ironMg: ['iron_mg','iron'], potassiumMg: ['potassium_mg','potassium'], vitaminCMg: ['vitamin_c_mg','vitamin_c'] }
+const aliases: Record<NutrientKey, string[]> = {
+  energyKcal: ['energy_kcal','energy','kcal'], proteinG: ['protein_g','protein'], carbohydrateG: ['carbohydrate_g','carbohydrate','carbs'], fatG: ['fat_g','fat','lipids'], fiberG: ['fiber_g','fiber'],
+  sodiumMg: ['sodium_mg','sodium'], calciumMg: ['calcium_mg','calcium'], ironMg: ['iron_mg','iron'], potassiumMg: ['potassium_mg','potassium'], vitaminCMg: ['vitamin_c_mg','vitamin_c'],
+  saturatedFatG: ['saturated_fat_g','saturated_fat','sat_fat'], monounsaturatedFatG: ['monounsaturated_fat_g','monounsaturated_fat','mono_fat'], polyunsaturatedFatG: ['polyunsaturated_fat_g','polyunsaturated_fat','poly_fat'], transFatG: ['trans_fat_g','trans_fat','trans'],
+  vitaminB1Mg: ['vitamin_b1_mg','vitamin_b1','thiamin','tiamina'], vitaminB2Mg: ['vitamin_b2_mg','vitamin_b2','riboflavin','riboflavina'], vitaminB3Mg: ['vitamin_b3_mg','vitamin_b3','niacin','niacina'], vitaminB6Mg: ['vitamin_b6_mg','vitamin_b6','pyridoxine','piridoxina'], vitaminB9Mcg: ['vitamin_b9_mcg','vitamin_b9','folate','folic_acid','ácido fólico','acido_folico','folato'], vitaminB12Mcg: ['vitamin_b12_mcg','vitamin_b12','cobalamin','cobalamina'],
+}
 
 function normalize(row: FoodRow,componentRows:ComponentRow[]=[]): CatalogFood {
   const nutrients=emptyNutrients()
@@ -41,19 +54,51 @@ export function useFoodCatalog(organizationId: string, userId: string, setMessag
     const form=event.currentTarget,data=new FormData(form),catalogKind=String(data.get('catalogKind')||'food') as CatalogKind
     const components=foods.map(food=>({food,grams:Number(String(data.get(`component-${food.id}`)||0).replace(',','.'))})).filter(item=>item.grams>0)
     const yieldGrams=Number(String(data.get('yieldGrams')||0).replace(',','.')),portionCount=Number(String(data.get('portionCount')||0).replace(',','.')),householdMeasureGrams=Number(String(data.get('householdMeasureGrams')||0).replace(',','.')),householdMeasureLabel=String(data.get('householdMeasureLabel')||'').trim()
-    const manualValues=Object.fromEntries(macroKeys.map(key=>[key,Number(String(data.get(key)||0).replace(',','.'))])) as Record<NutrientKey,number>
+    const manualValues=Object.fromEntries(nutrientKeys.map(key=>[key,Number(String(data.get(key)||0).replace(',','.'))])) as Record<NutrientKey,number>
     if(catalogKind==='food'&&macroKeys.some(key=>!Number.isFinite(manualValues[key])||manualValues[key]<0)){setBusy(false);return setMessage('Informe valores válidos e não negativos.')}
     if(catalogKind!=='food'&&(!components.length||!Number.isFinite(yieldGrams)||yieldGrams<=0||!Number.isFinite(portionCount)||portionCount<=0)){setBusy(false);return setMessage('Adicione componentes, rendimento e número de porções válidos.')}
     if((householdMeasureLabel&&(!Number.isFinite(householdMeasureGrams)||householdMeasureGrams<=0))||(!householdMeasureLabel&&householdMeasureGrams>0)){setBusy(false);return setMessage('Informe nome e peso positivo da medida caseira, ou deixe ambos vazios.')}
-    const derived=catalogKind==='food'?{nutrients:manualValues,available:macroKeys}:deriveCatalogNutrients(components.map(({food,grams})=>({grams,nutrients:food.nutrients,available:food.availableNutrients})),yieldGrams)
+    const derived=catalogKind==='food'?{nutrients:manualValues,available:nutrientKeys.filter(k=>macroKeys.includes(k)||(data.get(k)!==null&&String(data.get(k))!==''))}:deriveCatalogNutrients(components.map(({food,grams})=>({grams,nutrients:food.nutrients,available:food.availableNutrients})),yieldGrams)
     const renderPath=catalogRenderSrc(String(data.get('renderPath')||'')),tags=(name:string)=>String(data.get(name)||'').split(',').map(item=>item.trim()).filter(Boolean)
     const sourceReliability=Number(String(data.get('sourceReliability')||0)),reviewed=data.get('reviewed')==='on'
-    const result=await supabase.from('foods').insert({organization_id:organizationId,source_id:String(data.get('sourceId')||'')||null,source_reference:String(data.get('sourceReference')||'').trim()||null,source_accessed_on:String(data.get('sourceAccessedOn')||'')||null,source_reliability:Number.isInteger(sourceReliability)&&sourceReliability>0?sourceReliability:null,review_status:reviewed?'reviewed':'pending_review',reviewed_by:reviewed?userId:null,name:String(data.get('name')).trim(),preparation_state:String(data.get('state')).trim()||'unspecified',search_terms:tags('searchTerms'),cultural_tags:tags('culturalTags'),restriction_tags:tags('restrictionTags'),preference_tags:tags('preferenceTags'),availability_tags:tags('availabilityTags'),cost_band:String(data.get('costBand')||'')||null,catalog_kind:catalogKind,yield_grams:catalogKind==='food'?null:yieldGrams,serving_grams:catalogKind==='food'?null:yieldGrams/portionCount,portion_count:catalogKind==='food'?null:portionCount,household_measure_label:householdMeasureLabel||null,household_measure_grams:householdMeasureLabel?householdMeasureGrams:null,render_path:renderPath,created_by:userId}).select('id').single()
-    if(result.error||!result.data){setBusy(false);return setMessage(result.error?.message??'Falha no cadastro.')}
     const mapped=derived.available.map(key=>({key,nutrient:nutrients.find(n=>aliases[key].includes(n.code.toLowerCase()))})).filter(item=>item.nutrient)
-    const valuesResult=mapped.length?await supabase.from('food_nutrient_values').insert(mapped.map(item=>({food_id:result.data.id,nutrient_id:item.nutrient!.id,amount_per_100g:derived.nutrients[item.key],data_version:'custom-v1'}))):{error:null}
-    const componentsResult=catalogKind!=='food'?await supabase.from('food_components').insert(components.map(({food,grams},position)=>({organization_id:organizationId,parent_food_id:result.data.id,component_food_id:food.id,grams,position}))):{error:null}
-    if(valuesResult.error||componentsResult.error){await supabase.from('foods').update({is_active:false}).eq('id',result.data.id);setMessage(`Cadastro revertido: ${valuesResult.error?.message??componentsResult.error?.message}`)}
+    const result=await supabase.rpc('add_custom_catalog_food', {
+      target_food: {
+        organization_id: organizationId,
+        source_id: String(data.get('sourceId')||'')||null,
+        source_reference: String(data.get('sourceReference')||'').trim()||null,
+        source_accessed_on: String(data.get('sourceAccessedOn')||'')||null,
+        source_reliability: Number.isInteger(sourceReliability)&&sourceReliability>0?sourceReliability:null,
+        review_status: reviewed?'reviewed':'pending_review',
+        reviewed_by: reviewed?userId:null,
+        name: String(data.get('name')).trim(),
+        preparation_state: String(data.get('state')).trim()||'unspecified',
+        search_terms: tags('searchTerms'),
+        cultural_tags: tags('culturalTags'),
+        restriction_tags: tags('restrictionTags'),
+        preference_tags: tags('preferenceTags'),
+        availability_tags: tags('availabilityTags'),
+        cost_band: String(data.get('costBand')||'')||null,
+        catalog_kind: catalogKind,
+        yield_grams: catalogKind==='food'?null:yieldGrams,
+        serving_grams: catalogKind==='food'?null:yieldGrams/portionCount,
+        portion_count: catalogKind==='food'?null:portionCount,
+        household_measure_label: householdMeasureLabel||null,
+        household_measure_grams: householdMeasureLabel?householdMeasureGrams:null,
+        render_path: renderPath
+      },
+      target_nutrients: mapped.map(item=>({
+        nutrient_id: item.nutrient!.id,
+        amount_per_100g: derived.nutrients[item.key],
+        data_version: 'custom-v1'
+      })),
+      target_components: catalogKind!=='food'?components.map(({food,grams},position)=>({
+        component_food_id: food.id,
+        grams,
+        position
+      })):[]
+    })
+    if(result.error){setMessage(`Cadastro revertido: ${result.error.message}`)}
     else{form.reset();await load();setMessage(catalogKind==='food'?'Alimento cadastrado.':catalogKind==='preparation'?'Preparação cadastrada.':'Combinação cadastrada.')}
     setBusy(false)
   }

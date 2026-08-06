@@ -363,4 +363,55 @@ describe('NutritionWorkspace editor modes', () => {
 
     expect(await screen.findByText('1,56 g/kg')).toBeInTheDocument()
   })
+
+  it('realiza salvamento de rascunho de plano e cadastro de alimento via RPC atômica', async () => {
+    fromMock.mockImplementation((table: string) => queryResult(table === 'nutrients' ? [
+      { id: 'n-1', code: 'energy_kcal', name: 'Energia', unit: 'kcal' },
+      { id: 'n-2', code: 'protein_g', name: 'Proteína', unit: 'g' },
+      { id: 'n-3', code: 'carbohydrate_g', name: 'Carboidrato', unit: 'g' },
+      { id: 'n-4', code: 'fat_g', name: 'Gordura', unit: 'g' },
+      { id: 'n-5', code: 'fiber_g', name: 'Fibras', unit: 'g' },
+    ] : table === 'foods' ? [{
+      id: 'food-1', name: 'Arroz', preparation_state: 'cozido',
+      food_nutrient_values: [{ amount_per_100g: 130, nutrients: { id: 'n-1', code: 'energy_kcal', name: 'Energia', unit: 'kcal' } }],
+    }] : []))
+    rpcMock.mockResolvedValue({ data: 'rpc-result-id', error: null })
+    render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
+
+    fireEvent.change(await screen.findByLabelText(/^Nome$/i), { target: { value: 'Batata doce' } })
+    const form = screen.getByRole('button', { name: 'Cadastrar alimento' }).closest('form')!
+    form.querySelector<HTMLInputElement>('input[name="energyKcal"]')!.value = '100'
+    form.querySelector<HTMLInputElement>('input[name="proteinG"]')!.value = '2'
+    form.querySelector<HTMLInputElement>('input[name="carbohydrateG"]')!.value = '24'
+    form.querySelector<HTMLInputElement>('input[name="fatG"]')!.value = '0.1'
+    fireEvent.submit(form)
+
+    await waitFor(() => {
+      expect(rpcMock).toHaveBeenCalledWith('add_custom_catalog_food', expect.objectContaining({
+        target_food: expect.objectContaining({
+          organization_id: 'org-1',
+          name: 'Batata doce',
+          catalog_kind: 'food',
+        }),
+      }))
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
+    fireEvent.change(screen.getByLabelText('Paciente'), { target: { value: 'patient-1' } })
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Plano Atômico' } })
+    fireEvent.change(await screen.findByLabelText('Buscar alimento'), { target: { value: 'arr' } })
+    fireEvent.change(await screen.findByLabelText('Alimento'), { target: { value: 'food-1' } })
+    fireEvent.change(screen.getByLabelText('Gramas'), { target: { value: '150' } })
+    fireEvent.click(screen.getByRole('button', { name: /Item/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /^Salvar rascunho$/i }))
+
+    await waitFor(() => {
+      expect(rpcMock).toHaveBeenCalledWith('save_plan_draft', expect.objectContaining({
+        target_organization_id: 'org-1',
+        target_patient_id: 'patient-1',
+        target_title: 'Plano Atômico',
+      }))
+    })
+  })
 })
