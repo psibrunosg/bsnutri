@@ -10,7 +10,6 @@ import {
   Sparkles,
   Trash2,
   UtensilsCrossed,
-  X,
 } from 'lucide-react'
 import { gramsPerKg, totalDay, type Meal, type NutrientKey } from '../lib/nutrition'
 import { macroKeys, macroLabels, lipidKeys, vitaminKeys, type CatalogFood } from '../lib/useFoodCatalog'
@@ -66,15 +65,7 @@ const MODEL_TAG_LABELS: Record<string, string> = {
 }
 const modelTagLabel = (tag: string) => MODEL_TAG_LABELS[tag] ?? tag
 
-const WEEKDAY_OPTIONS = [
-  { code: 'mon', label: 'Segunda-feira' },
-  { code: 'tue', label: 'Terça-feira' },
-  { code: 'wed', label: 'Quarta-feira' },
-  { code: 'thu', label: 'Quinta-feira' },
-  { code: 'fri', label: 'Sexta-feira' },
-  { code: 'sat', label: 'Sábado' },
-  { code: 'sun', label: 'Domingo' },
-]
+
 
 interface PlanEditorProps {
   catalog: CatalogRef
@@ -85,6 +76,7 @@ interface PlanEditorProps {
 }
 
 export function PlanEditor({ catalog, planDraft, patients, organizationId, setMessage }: PlanEditorProps) {
+  const [sidebarTab, setSidebarTab] = useState<'config' | 'models' | 'drafts' | 'assistant'>('config')
   const { lists: equivalencyLists } = useEquivalencyLists(organizationId)
   const {
     days,
@@ -115,8 +107,6 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
     title,
     setTitle,
     busy,
-    applyDialog,
-    setApplyDialog,
     patientWeightKg,
     latestEstimate,
     showShoppingList,
@@ -135,7 +125,6 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
     review,
     publish,
     saveTemplate,
-    copyTemplate,
     requestApplyTemplate,
     applyBuiltInModel,
     duplicateActiveDay,
@@ -167,45 +156,94 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
         </button>
         {!contextCollapsed && (
           <>
-            <section className="panel plan-basics">
-              <div className="panel-kicker">
-                <UtensilsCrossed /> Contexto clínico
-              </div>
-              <label>
-                Paciente
-                <select value={patientId} disabled={locked} onChange={e => setPatientId(e.target.value)}>
-                  <option value="">Selecione</option>
-                  {patients.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.anonymous_code} · {p.full_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Título
-                <input value={title} readOnly={locked} onChange={e => setTitle(e.target.value)} />
-              </label>
-            </section>
-            <aside className="draft-panel panel">
-              <header>
-                <div>
-                  <h2>Planos</h2>
-                  <small>{drafts.length} plano(s)</small>
+            <div className="editor-mode panel" role="tablist" style={{ marginBottom: '1rem' }}>
+              <button role="tab" aria-selected={sidebarTab === 'config'} className={sidebarTab === 'config' ? 'active' : ''} onClick={() => setSidebarTab('config')}>Configuração</button>
+              <button role="tab" aria-selected={sidebarTab === 'models'} className={sidebarTab === 'models' ? 'active' : ''} onClick={() => setSidebarTab('models')}>Modelos</button>
+              <button role="tab" aria-selected={sidebarTab === 'drafts'} className={sidebarTab === 'drafts' ? 'active' : ''} onClick={() => setSidebarTab('drafts')}>Planos</button>
+              <button role="tab" aria-selected={sidebarTab === 'assistant'} className={sidebarTab === 'assistant' ? 'active' : ''} onClick={() => setSidebarTab('assistant')}>Assistente</button>
+            </div>
+            
+            {sidebarTab === 'config' && (
+              <section className="panel plan-basics">
+                <div className="panel-kicker">
+                  <UtensilsCrossed /> Contexto clínico
                 </div>
-                <button aria-label="Atualizar planos" onClick={() => void loadDrafts()}>
-                  <RefreshCw />
-                </button>
-              </header>
-              <div className="template-box">
-                <h3>Começar plano</h3>
-                <button className="secondary" onClick={startBlankPlan}>
-                  <Plus /> Em branco
-                </button>
-                <button className="secondary" disabled={!loadedDraft} onClick={copyOpenDraft}>
-                  <Copy /> Usar plano aberto como base
-                </button>
-              </div>
+                <label>
+                  Paciente
+                  <select value={patientId} disabled={locked} onChange={e => setPatientId(e.target.value)}>
+                    <option value="">Selecione</option>
+                    {patients.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.anonymous_code} · {p.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Título
+                  <input value={title} readOnly={locked} onChange={e => setTitle(e.target.value)} />
+                </label>
+              </section>
+            )}
+
+            {sidebarTab === 'drafts' && (
+              <aside className="draft-panel panel">
+                <header>
+                  <div>
+                    <h2>Planos</h2>
+                    <small>{drafts.length} plano(s)</small>
+                  </div>
+                  <button aria-label="Atualizar planos" onClick={() => void loadDrafts()}>
+                    <RefreshCw />
+                  </button>
+                </header>
+                <div className="template-box">
+                  <h3>Começar plano</h3>
+                  <button className="secondary" onClick={startBlankPlan}>
+                    <Plus /> Em branco
+                  </button>
+                  <button className="secondary" disabled={!loadedDraft} onClick={copyOpenDraft}>
+                    <Copy /> Usar plano aberto como base
+                  </button>
+                </div>
+                {loadingDrafts ? (
+                  <p className="muted">Carregando planos...</p>
+                ) : (
+                  <div className="draft-list">
+                    {drafts.map(draft => (
+                      <button className={loadedDraft === draft.id ? 'active' : ''} key={draft.id} onClick={() => openDraft(draft)}>
+                        <span>
+                          <strong>{draft.title}</strong>
+                          <small>
+                            {patients.find(p => p.id === draft.patientId)?.full_name ?? 'Paciente'} · {draft.days.length} dia(s) · v
+                            {draft.version}
+                          </small>
+                          <time>
+                            <b className={`plan-status ${draft.status}`}>
+                              {draft.status === 'published' ? 'Publicado' : draft.status === 'reviewed' ? 'Revisado' : 'Rascunho'}
+                            </b>{' '}
+                            · {new Date(draft.updatedAt).toLocaleDateString('pt-BR')}
+                          </time>
+                        </span>
+                        <ChevronRight />
+                      </button>
+                    ))}
+                    {!drafts.length && <p className="muted">Nenhum plano salvo.</p>}
+                    <div className="template-box">
+                      <h3>Salvar modelo</h3>
+                      <button className="secondary" disabled={!loadedDraft} onClick={() => void saveTemplate('personal')}>
+                        Salvar pessoal
+                      </button>
+                      <button className="secondary" disabled={!loadedDraft} onClick={() => void saveTemplate('organization')}>
+                        Compartilhar com clínica
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </aside>
+            )}
+
+            {sidebarTab === 'models' && (
               <ModelGallery
                 templates={templates}
                 filters={modelFilters}
@@ -213,42 +251,11 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
                 applyBuiltInModel={applyBuiltInModel}
                 requestApplyTemplate={requestApplyTemplate}
               />
-              {loadingDrafts ? (
-                <p className="muted">Carregando planos...</p>
-              ) : (
-                <div className="draft-list">
-                  {drafts.map(draft => (
-                    <button className={loadedDraft === draft.id ? 'active' : ''} key={draft.id} onClick={() => openDraft(draft)}>
-                      <span>
-                        <strong>{draft.title}</strong>
-                        <small>
-                          {patients.find(p => p.id === draft.patientId)?.full_name ?? 'Paciente'} · {draft.days.length} dia(s) · v
-                          {draft.version}
-                        </small>
-                        <time>
-                          <b className={`plan-status ${draft.status}`}>
-                            {draft.status === 'published' ? 'Publicado' : draft.status === 'reviewed' ? 'Revisado' : 'Rascunho'}
-                          </b>{' '}
-                          · {new Date(draft.updatedAt).toLocaleDateString('pt-BR')}
-                        </time>
-                      </span>
-                      <ChevronRight />
-                    </button>
-                  ))}
-                  {!drafts.length && <p className="muted">Nenhum plano salvo.</p>}
-                  <div className="template-box">
-                    <h3>Salvar modelo</h3>
-                    <button className="secondary" disabled={!loadedDraft} onClick={() => void saveTemplate('personal')}>
-                      Salvar pessoal
-                    </button>
-                    <button className="secondary" disabled={!loadedDraft} onClick={() => void saveTemplate('organization')}>
-                      Compartilhar com clínica
-                    </button>
-                  </div>
-                </div>
-              )}
-            </aside>
-            <PlanAssistant state={assistant} setState={setAssistant} locked={locked} />
+            )}
+
+            {sidebarTab === 'assistant' && (
+              <PlanAssistant state={assistant} setState={setAssistant} locked={locked} />
+            )}
           </>
         )}
       </aside>
@@ -475,9 +482,7 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
           </>
         )}
       </aside>
-      {applyDialog && (
-        <ApplyTemplateDialog name={applyDialog.name} onCancel={() => setApplyDialog(null)} onConfirm={weekdays => { const id = applyDialog.templateId; setApplyDialog(null); void copyTemplate(id, weekdays) }} />
-      )}
+
     </div>
   )
 }
@@ -699,41 +704,6 @@ function PlanAssistant({
   )
 }
 
-function ApplyTemplateDialog({ name, onCancel, onConfirm }: { name: string; onCancel: () => void; onConfirm: (weekdays: string[]) => void }) {
-  const [selected, setSelected] = useState<string[]>(WEEKDAY_OPTIONS.map(option => option.code))
-  const toggle = (code: string) => setSelected(current => (current.includes(code) ? current.filter(item => item !== code) : [...current, code]))
-  return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Aplicar modelo ${name}`} onClick={onCancel}>
-      <div className="modal" onClick={event => event.stopPropagation()}>
-        <header>
-          <h2>Aplicar {name}</h2>
-          <button aria-label="Fechar" onClick={onCancel}>
-            <X />
-          </button>
-        </header>
-        <p className="muted">
-          Escolha os dias da semana do plano. O rascunho é criado para revisão: você ajusta os alimentos conforme o paciente e publica depois.
-        </p>
-        <div className="weekday-grid">
-          {WEEKDAY_OPTIONS.map(option => (
-            <label key={option.code} className="check-option">
-              <input type="checkbox" checked={selected.includes(option.code)} onChange={() => toggle(option.code)} />
-              {option.label}
-            </label>
-          ))}
-        </div>
-        <div className="actions">
-          <button className="secondary" onClick={onCancel}>
-            Cancelar
-          </button>
-          <button className="primary" disabled={!selected.length} onClick={() => onConfirm(selected)}>
-            Aplicar {selected.length} dia(s)
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function ModelGallery({
   templates,

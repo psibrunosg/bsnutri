@@ -46,6 +46,25 @@ export const initialDay = (): EditorDay => ({
   meals: [{ id: crypto.randomUUID(), name: 'Café da manhã', items: [] }],
 })
 
+export const standardMeals = (): Meal[] => [
+  { id: crypto.randomUUID(), name: 'Café da manhã', items: [] },
+  { id: crypto.randomUUID(), name: 'Lanche da manhã', items: [] },
+  { id: crypto.randomUUID(), name: 'Almoço', items: [] },
+  { id: crypto.randomUUID(), name: 'Lanche da tarde', items: [] },
+  { id: crypto.randomUUID(), name: 'Jantar', items: [] },
+  { id: crypto.randomUUID(), name: 'Ceia', items: [] },
+]
+
+export const initialWeek = (): EditorDay[] => {
+  const labels = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
+  return labels.map(label => ({
+    id: crypto.randomUUID(),
+    label,
+    kind: 'standard',
+    meals: standardMeals(),
+  }))
+}
+
 export interface CatalogRef {
   foods: CatalogFood[]
   saveFoodPreference: (foodId: string, change: Partial<Pick<FoodPreference, 'is_favorite' | 'last_used_at'>>) => Promise<void>
@@ -59,7 +78,7 @@ export function usePlanDraft(
   setTab: (tab: 'catalog' | 'plan') => void
 ) {
   const autosaveKey = `bsnutri:plan-draft:${organizationId}`
-  const [days, setDays] = useState<EditorDay[]>([initialDay()])
+  const [days, setDays] = useState<EditorDay[]>(initialWeek())
   const [activeDay, setActiveDay] = useState(0)
   const [baselineDays, setBaselineDays] = useState<EditorDay[] | null>(null)
   const [drafts, setDrafts] = useState<DraftSummary[]>([])
@@ -83,7 +102,6 @@ export function usePlanDraft(
   const [patientId, setPatientId] = useState('')
   const [title, setTitle] = useState('Plano alimentar')
   const [busy, setBusy] = useState(false)
-  const [applyDialog, setApplyDialog] = useState<{ templateId: string; name: string } | null>(null)
   const [patientWeightKg, setPatientWeightKg] = useState<number | null>(null)
   const [latestEstimate, setLatestEstimate] = useState<NutritionalEstimateRow | null>(null)
   const [showShoppingList, setShowShoppingList] = useState(false)
@@ -189,7 +207,7 @@ export function usePlanDraft(
   function openDraft(draft: DraftSummary) {
     setPatientId(draft.patientId)
     setTitle(draft.title)
-    setDays(draft.days.length ? draft.days : [initialDay()])
+    setDays(draft.days.length ? draft.days : initialWeek())
     setBaselineDays(structuredClone(draft.days))
     setActiveDay(0)
     setLoadedDraft(draft.id)
@@ -205,7 +223,7 @@ export function usePlanDraft(
 
   function restoreLocalDraft() {
     if (!recoverableDraft) return
-    const restoredDays = recoverableDraft.days.length ? recoverableDraft.days : [initialDay()]
+    const restoredDays = recoverableDraft.days.length ? recoverableDraft.days : initialWeek()
     const restored = {
       ...recoverableDraft,
       days: restoredDays,
@@ -240,7 +258,7 @@ export function usePlanDraft(
 
   function startBlankPlan() {
     setTitle('Plano alimentar')
-    setDays([initialDay()])
+    setDays(initialWeek())
     setBaselineDays(null)
     setActiveDay(0)
     setLoadedDraft(null)
@@ -361,9 +379,9 @@ export function usePlanDraft(
     }
   }
 
-  function requestApplyTemplate(templateId: string, name: string) {
+  function requestApplyTemplate(templateId: string, _name: string) {
     if (!patientId) return setMessage('Selecione um paciente antes de aplicar o modelo.')
-    setApplyDialog({ templateId, name })
+    void copyTemplate(templateId, ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])
   }
 
   function applyBuiltInModel(model: (typeof builtInPlanModels)[number]) {
@@ -378,7 +396,7 @@ export function usePlanDraft(
       currentStep: 'objective',
       completedSteps: [],
     }))
-    setDays([initialDay()])
+    setDays(initialWeek())
     setBaselineDays(null)
     setActiveDay(0)
     setLoadedDraft(null)
@@ -473,7 +491,7 @@ export function usePlanDraft(
       if (error) throw error
 
       setMessage('Plano salvo como novo rascunho, versão 1.')
-      setDays([initialDay()])
+      setDays(initialWeek())
       setActiveDay(0)
       setLoadedDraft(null)
       setLoadedVersion('')
@@ -520,8 +538,6 @@ export function usePlanDraft(
     title,
     setTitle,
     busy,
-    applyDialog,
-    setApplyDialog,
     patientWeightKg,
     latestEstimate,
     showShoppingList,
