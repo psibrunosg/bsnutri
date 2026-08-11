@@ -227,9 +227,12 @@ export function usePlanDraft(
     const restored = {
       ...recoverableDraft,
       days: restoredDays,
-      activeDay: Number.isInteger(recoverableDraft.activeDay)
-        ? Math.min(Math.max(recoverableDraft.activeDay, 0), restoredDays.length - 1)
-        : 0,
+      activeDay:
+        Number.isInteger(recoverableDraft.activeDay) &&
+        recoverableDraft.activeDay >= 0 &&
+        recoverableDraft.activeDay < restoredDays.length
+          ? recoverableDraft.activeDay
+          : 0,
       assistant: sanitizeAssistantState(recoverableDraft.assistant),
     }
     autosaveBaselineRef.current = localDraftFingerprint(restored)
