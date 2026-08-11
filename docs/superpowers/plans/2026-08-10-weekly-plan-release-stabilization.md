@@ -132,8 +132,8 @@ Use the existing `meal.name` directly:
 ```tsx
 <section className="panel meal-editor" aria-label={meal.name}>
   <input aria-label={`Buscar alimento no ${meal.name}`} />
-  <select aria-label={`Alimento para ${meal.name}`} />
-  <input aria-label={`Gramas para ${meal.name}`} />
+  <select aria-label={`Alimento no ${meal.name}`} />
+  <input aria-label={`Gramas no ${meal.name}`} />
 </section>
 ```
 
