@@ -71,7 +71,7 @@ Use the same region-scoped pattern in shopping-list and atomic-save tests. Do no
 Run:
 
 ```bash
-npx vitest run src/NutritionWorkspace.ui.test.tsx --reporter=basic
+npx vitest run src/NutritionWorkspace.ui.test.tsx
 ```
 
 Expected: failures specifically because named meal regions, contextual labels, day-panel association, or complete sidebar tab semantics do not exist yet. Fix selector mistakes until the remaining failures name missing production behavior.
@@ -144,7 +144,7 @@ Preserve visible copy and behavior.
 Run:
 
 ```bash
-npx vitest run src/NutritionWorkspace.ui.test.tsx --reporter=basic
+npx vitest run src/NutritionWorkspace.ui.test.tsx
 ```
 
 Expected: all tests in the file pass with zero failures.
@@ -154,7 +154,7 @@ Expected: all tests in the file pass with zero failures.
 Run:
 
 ```bash
-npx vitest run src/NutritionWorkspace.ui.test.tsx src/lib/planDrafts.test.ts src/lib/planModels.test.ts src/PatientPortal.test.tsx --reporter=basic
+npx vitest run src/NutritionWorkspace.ui.test.tsx src/lib/planDrafts.test.ts src/lib/planModels.test.ts src/PatientPortal.test.tsx
 ```
 
 Expected: zero failures.
