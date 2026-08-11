@@ -18,6 +18,8 @@ function queryResult(data: unknown[] = []) {
 
 const session = { user: { id: 'user-1' } }
 const patients = [{ id: 'patient-1', anonymous_code: 'P01', full_name: 'Paciente Teste' }]
+const openSidebarTab = (name: RegExp) =>
+  fireEvent.click(screen.getByRole('tab', { name }))
 
 describe('NutritionWorkspace editor modes', () => {
   afterEach(() => cleanup())
@@ -38,6 +40,7 @@ describe('NutritionWorkspace editor modes', () => {
     expect(quickMode).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByText('Metas nutricionais').closest('section')).toHaveAttribute('aria-hidden', 'true')
 
+    openSidebarTab(/Assistente/i)
     const objective = screen.getByLabelText(/Objetivo/i)
     fireEvent.change(objective, { target: { value: 'Hipertrofia com rotina simples' } })
 
@@ -56,7 +59,7 @@ describe('NutritionWorkspace editor modes', () => {
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
 
     fireEvent.click(await screen.findByRole('button', { name: /Duplicar dia/i }))
-    expect(screen.getByRole('tab', { name: /Dia 1 copia/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Segunda-feira copia' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Duplicar Caf/i }))
     expect(screen.getByDisplayValue(/Caf.*copia/i)).toBeInTheDocument()
@@ -87,12 +90,21 @@ describe('NutritionWorkspace editor modes', () => {
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
 
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
-    fireEvent.change(await screen.findByLabelText('Buscar alimento'), { target: { value: 'arr' } })
+    const monday = screen.getByRole('tab', { name: 'Segunda-feira' })
+    expect(monday).toHaveAttribute('aria-selected', 'true')
+    expect(monday).toHaveAttribute('id')
+    expect(monday).toHaveAttribute('aria-controls')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', monday.getAttribute('id'))
+    expect(screen.getByRole('tab', { name: 'Domingo' })).toBeInTheDocument()
+    const breakfast = screen.getByRole('region', { name: 'Café da manhã' })
+    expect(breakfast).toBeInTheDocument()
+    expect(within(breakfast).getByLabelText('Buscar alimento no Café da manhã')).toBeInTheDocument()
+    fireEvent.change(within(breakfast).getByLabelText('Buscar alimento no Café da manhã'), { target: { value: 'arr' } })
     expect(screen.getByRole('option', { name: 'Arroz' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Batata' })).not.toBeInTheDocument()
-    fireEvent.change(await screen.findByLabelText('Alimento'), { target: { value: 'food-1' } })
-    fireEvent.change(screen.getByLabelText('Gramas'), { target: { value: '100' } })
-    fireEvent.click(screen.getByRole('button', { name: /Item/i }))
+    fireEvent.change(within(breakfast).getByLabelText('Alimento no Café da manhã'), { target: { value: 'food-1' } })
+    fireEvent.change(within(breakfast).getByLabelText('Gramas no Café da manhã'), { target: { value: '100' } })
+    fireEvent.click(within(breakfast).getByRole('button', { name: /Item/i }))
 
     fireEvent.change(screen.getByLabelText('Gramas de Arroz'), { target: { value: '200' } })
 
@@ -120,12 +132,16 @@ describe('NutritionWorkspace editor modes', () => {
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
 
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
+    openSidebarTab(/Assistente/i)
     fireEvent.change(await screen.findByLabelText(/Objetivo/i), { target: { value: 'Objetivo antigo' } })
+    fireEvent.click(screen.getByRole('tab', { name: /Configura/i }))
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Plano antigo' } })
 
+    openSidebarTab(/Planos/i)
     fireEvent.click(screen.getByRole('button', { name: /Em branco/i }))
 
-    expect(screen.getByDisplayValue('Plano alimentar')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Plano alimentar' })).toBeInTheDocument()
+    openSidebarTab(/Assistente/i)
     expect(screen.queryByDisplayValue('Objetivo antigo')).not.toBeInTheDocument()
     expect(screen.getByText(/Novo plano em branco/i)).toBeInTheDocument()
   })
@@ -149,10 +165,11 @@ describe('NutritionWorkspace editor modes', () => {
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
 
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
+    openSidebarTab(/Planos/i)
     fireEvent.click(await screen.findByText('Plano anterior'))
     fireEvent.click(screen.getByRole('button', { name: /Usar plano aberto/i }))
 
-    expect(screen.getByDisplayValue('Plano anterior copia')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Plano anterior copia' })).toBeInTheDocument()
     expect(screen.getByText(/Salve para criar um novo rascunho/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Salvar rascunho$/i })).toBeInTheDocument()
   })
@@ -173,6 +190,7 @@ describe('NutritionWorkspace editor modes', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Restaurar/i }))
 
     expect(screen.getByDisplayValue('Plano local')).toBeInTheDocument()
+    openSidebarTab(/Assistente/i)
     expect(screen.getByDisplayValue('Rascunho de consulta')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Jantar')).toBeInTheDocument()
     expect(screen.getByText(/Rascunho local restaurado/i)).toBeInTheDocument()
@@ -212,15 +230,12 @@ describe('NutritionWorkspace editor modes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
     fireEvent.change(await screen.findByLabelText('Paciente'), { target: { value: 'patient-1' } })
+    openSidebarTab(/Modelos/i)
     const modelCard=(await screen.findByText('Modelo pratico')).closest('article')
     fireEvent.click(within(modelCard!).getByRole('button', { name: 'Aplicar' }))
-    const dialog=await screen.findByRole('dialog')
-    expect(within(dialog).getByRole('button', { name: 'Aplicar 7 dia(s)' })).toBeEnabled()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Aplicar 7 dia(s)' }))
 
     expect(await screen.findByText(/Modelo aplicado em rascunho independente \(7 dia\(s\)\)/i)).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Modelo pratico')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Almoco')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Modelo pratico' })).toBeInTheDocument()
   })
 
   it('exige confirmacao extra ao publicar sem substituicoes revisadas', async () => {
@@ -242,6 +257,7 @@ describe('NutritionWorkspace editor modes', () => {
 
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
+    openSidebarTab(/Planos/i)
     fireEvent.click(await screen.findByText('Plano A'))
 
     fireEvent.click(screen.getByRole('button', { name: /^Publicar$/i }))
@@ -301,10 +317,11 @@ describe('NutritionWorkspace editor modes', () => {
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
     fireEvent.change(await screen.findByLabelText('Paciente'), { target: { value: 'patient-1' } })
+    openSidebarTab(/Modelos/i)
     const gallery=screen.getByRole('region', { name: 'Galeria de modelos' })
     fireEvent.click(within(gallery).getByRole('checkbox', { name: 'Hipertrofia' }))
     fireEvent.click(within(gallery).getByRole('button', { name: 'Aplicar' }))
-    expect(screen.getAllByDisplayValue('Hipertrofia')).toHaveLength(2)
+    expect(screen.getByRole('heading', { name: 'Hipertrofia' })).toBeInTheDocument()
     expect(screen.getByText(/Modelo aplicado em rascunho local/i)).toBeInTheDocument()
   })
 
@@ -329,10 +346,11 @@ describe('NutritionWorkspace editor modes', () => {
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
 
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
-    fireEvent.change(await screen.findByLabelText('Buscar alimento'), { target: { value: 'arr' } })
-    fireEvent.change(await screen.findByLabelText('Alimento'), { target: { value: 'food-1' } })
-    fireEvent.change(screen.getByLabelText('Gramas'), { target: { value: '150' } })
-    fireEvent.click(screen.getByRole('button', { name: /Item/i }))
+    const breakfast = screen.getByRole('region', { name: 'Café da manhã' })
+    fireEvent.change(within(breakfast).getByLabelText('Buscar alimento no Café da manhã'), { target: { value: 'arr' } })
+    fireEvent.change(within(breakfast).getByLabelText('Alimento no Café da manhã'), { target: { value: 'food-1' } })
+    fireEvent.change(within(breakfast).getByLabelText('Gramas no Café da manhã'), { target: { value: '150' } })
+    fireEvent.click(within(breakfast).getByRole('button', { name: /Item/i }))
 
     fireEvent.click(screen.getByRole('button', { name: /Lista de compras/i }))
     expect(screen.getByText('Arroz - 150 g')).toBeInTheDocument()
@@ -358,6 +376,7 @@ describe('NutritionWorkspace editor modes', () => {
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
 
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
+    openSidebarTab(/Planos/i)
     fireEvent.click(await screen.findByText('Plano A'))
     fireEvent.click(screen.getByRole('tab', { name: /Tecnico/i }))
 
@@ -399,10 +418,11 @@ describe('NutritionWorkspace editor modes', () => {
     fireEvent.click(screen.getByRole('button', { name: /Editor de plano/i }))
     fireEvent.change(screen.getByLabelText('Paciente'), { target: { value: 'patient-1' } })
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Plano Atômico' } })
-    fireEvent.change(await screen.findByLabelText('Buscar alimento'), { target: { value: 'arr' } })
-    fireEvent.change(await screen.findByLabelText('Alimento'), { target: { value: 'food-1' } })
-    fireEvent.change(screen.getByLabelText('Gramas'), { target: { value: '150' } })
-    fireEvent.click(screen.getByRole('button', { name: /Item/i }))
+    const breakfast = screen.getByRole('region', { name: 'Café da manhã' })
+    fireEvent.change(within(breakfast).getByLabelText('Buscar alimento no Café da manhã'), { target: { value: 'arr' } })
+    fireEvent.change(within(breakfast).getByLabelText('Alimento no Café da manhã'), { target: { value: 'food-1' } })
+    fireEvent.change(within(breakfast).getByLabelText('Gramas no Café da manhã'), { target: { value: '150' } })
+    fireEvent.click(within(breakfast).getByRole('button', { name: /Item/i }))
 
     fireEvent.click(screen.getByRole('button', { name: /^Salvar rascunho$/i }))
 
