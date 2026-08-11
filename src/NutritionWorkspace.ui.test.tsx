@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NutritionWorkspace } from './NutritionWorkspace'
+import type { LocalPlanDraft } from './lib/usePlanDraft'
 
 const { fromMock, rpcMock } = vi.hoisted(() => ({ fromMock: vi.fn(), rpcMock: vi.fn() }))
 
@@ -195,6 +196,30 @@ describe('NutritionWorkspace editor modes', () => {
     expect(screen.getByDisplayValue('Rascunho de consulta')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Jantar')).toBeInTheDocument()
     expect(screen.getByText(/Rascunho local restaurado/i)).toBeInTheDocument()
+  })
+
+  it('seleciona um dia válido ao restaurar rascunho com dia ativo inválido', async () => {
+    const draft: LocalPlanDraft = {
+      patientId: 'patient-1',
+      title: 'Plano com dia inválido',
+      days: [{ id: 'day-local', label: 'Dia local', kind: 'standard', meals: [{ id: 'meal-local', name: 'Jantar', items: [] }] }],
+      activeDay: -1,
+      targets: { energyKcal: 1800, proteinG: 120, carbohydrateG: 180, fatG: 60, fiberG: 25, waterMl: 2200 },
+      assistant: {
+        currentStep: 'objective', completedSteps: [], objective: 'Rascunho de consulta', clinicalPresets: [], priorityMicronutrients: [],
+        visibility: { showTotalKcal: true, showTotalMacros: true, showMealCalculations: false, showDiary: true },
+        targetRanges: {}, rangeJustification: '', mealDistributions: {},
+      },
+      editorMode: 'quick',
+      savedAt: '2026-08-10T14:00:00.000Z',
+    }
+    localStorage.setItem('bsnutri:plan-draft:org-1', JSON.stringify(draft))
+    render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Restaurar/i }))
+
+    expect(screen.getByRole('tab', { name: 'Dia local' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Dia local' })).toBeInTheDocument()
   })
 
   it('salva automaticamente o rascunho em edicao', async () => {
