@@ -87,10 +87,11 @@ git commit -m "test: define weekly editor journey"
 
 **Files:**
 - Modify: `src/components/PlanEditor.tsx`
+- Modify: `src/lib/usePlanDraft.ts`
 - Test: `src/NutritionWorkspace.ui.test.tsx`
 
 **Interfaces:**
-- Consumes: existing `sidebarTab` state and `meal.name` values.
+- Consumes: existing `sidebarTab` state, `meal.name` values, and local draft restoration.
 - Produces: named sidebar tablist, sidebar and day tabs associated to active `tabpanel` elements, and meal regions with contextual control names.
 
 - [ ] **Step 1: Name and associate the sidebar tabs**
@@ -125,7 +126,18 @@ Give every day tab a stable ID derived from `day.id` and `aria-controls="plan-da
 
 Keep only the active day's meals in the DOM.
 
-- [ ] **Step 3: Name each meal region and its repeated controls**
+- [ ] **Step 3: Normalize an invalid restored day index**
+
+At the local-storage boundary in `restoreLocalDraft`, accept only an integer index inside the restored days and otherwise use zero:
+
+```tsx
+const requestedDay = Number.isInteger(recoverableDraft.activeDay) ? recoverableDraft.activeDay : 0
+const restoredActiveDay = Math.max(0, Math.min(requestedDay, restoredDays.length - 1))
+```
+
+Store `restoredActiveDay` in the restored state and preserve every stored day and meal.
+
+- [ ] **Step 4: Name each meal region and its repeated controls**
 
 Use the existing `meal.name` directly:
 
@@ -139,7 +151,7 @@ Use the existing `meal.name` directly:
 
 Preserve visible copy and behavior.
 
-- [ ] **Step 4: Run the targeted test and verify GREEN**
+- [ ] **Step 5: Run the targeted test and verify GREEN**
 
 Run:
 
@@ -149,7 +161,7 @@ npx vitest run src/NutritionWorkspace.ui.test.tsx
 
 Expected: all tests in the file pass with zero failures.
 
-- [ ] **Step 5: Run the focused regression set**
+- [ ] **Step 6: Run the focused regression set**
 
 Run:
 
@@ -159,10 +171,10 @@ npx vitest run src/NutritionWorkspace.ui.test.tsx src/lib/planDrafts.test.ts src
 
 Expected: zero failures.
 
-- [ ] **Step 6: Commit the implementation**
+- [ ] **Step 7: Commit the implementation**
 
 ```bash
-git add src/components/PlanEditor.tsx
+git add src/components/PlanEditor.tsx src/lib/usePlanDraft.ts
 git commit -m "fix: stabilize weekly plan editor"
 ```
 

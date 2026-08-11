@@ -17,7 +17,7 @@ O commit `a56748c` introduziu abas laterais e a semana automática, mas a suíte
 1. Um plano novo, um modelo interno aplicado e um fallback sem dias usam sete dias, de segunda-feira a domingo.
 2. Cada dia começa com Café da manhã, Lanche da manhã, Almoço, Lanche da tarde, Jantar e Ceia.
 3. Modelos persistidos são aplicados diretamente aos sete dias, sem diálogo intermediário.
-4. Rascunhos existentes preservam os dias e refeições gravados; a semana padrão só cobre estados vazios ou novos.
+4. Rascunhos existentes preservam os dias e refeições gravados; a semana padrão só cobre estados vazios ou novos, e um índice de dia inválido é restaurado como o primeiro dia.
 5. As abas Configuração, Modelos, Planos e Assistente continuam sendo a navegação lateral do editor.
 6. Controles repetidos recebem nomes acessíveis contextualizados pela refeição.
 7. Nenhuma dependência, migration ou nova abstração será adicionada.
@@ -50,8 +50,9 @@ Os testes de `NutritionWorkspace.ui.test.tsx` navegarão pelas abas antes de int
 4. persistência do estado ao alternar densidade;
 5. duplicação do dia e da refeição ativos;
 6. abertura, cópia e restauração de rascunhos;
-7. aplicação direta de modelo aos sete dias;
-8. publicação, lista de compras, g/kg e salvamento atômico no fluxo com abas.
+7. restauração segura quando o dia ativo local estiver inválido;
+8. aplicação direta de modelo aos sete dias;
+9. publicação, lista de compras, g/kg e salvamento atômico no fluxo com abas.
 
 ## Gates
 
