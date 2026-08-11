@@ -47,6 +47,8 @@ Use hand-derived expectations:
 ```tsx
 expect(screen.getByRole('tab', { name: 'Segunda-feira' })).toHaveAttribute('aria-selected', 'true')
 expect(screen.getByRole('tab', { name: 'Domingo' })).toBeInTheDocument()
+expect(screen.getByRole('tab', { name: 'Segunda-feira' })).toHaveAttribute('aria-controls', 'plan-day-panel')
+expect(screen.getByRole('tabpanel', { name: 'Segunda-feira' })).toHaveAttribute('id', 'plan-day-panel')
 expect(screen.getByRole('region', { name: 'Café da manhã' })).toBeInTheDocument()
 expect(screen.getByLabelText('Buscar alimento no Café da manhã')).toBeInTheDocument()
 ```
@@ -72,7 +74,7 @@ Run:
 npx vitest run src/NutritionWorkspace.ui.test.tsx --reporter=basic
 ```
 
-Expected: failures specifically because named meal regions, contextual labels, or complete tab semantics do not exist yet. Fix selector mistakes until the remaining failures name missing production behavior.
+Expected: failures specifically because named meal regions, contextual labels, day-panel association, or complete sidebar tab semantics do not exist yet. Fix selector mistakes until the remaining failures name missing production behavior.
 
 - [ ] **Step 5: Commit the test contract**
 
@@ -89,7 +91,7 @@ git commit -m "test: define weekly editor journey"
 
 **Interfaces:**
 - Consumes: existing `sidebarTab` state and `meal.name` values.
-- Produces: named tablist, tabs associated to one active `tabpanel`, and meal regions with contextual control names.
+- Produces: named sidebar tablist, sidebar and day tabs associated to active `tabpanel` elements, and meal regions with contextual control names.
 
 - [ ] **Step 1: Name and associate the sidebar tabs**
 
@@ -107,7 +109,23 @@ Keep the existing state. Give the tablist `aria-label="Seções do contexto do p
 
 Do not add a generic tabs component.
 
-- [ ] **Step 2: Name each meal region and its repeated controls**
+- [ ] **Step 2: Associate the active day with its tab**
+
+Give every day tab a stable ID derived from `day.id` and `aria-controls="plan-day-panel"`. Wrap the active day's editable content in:
+
+```tsx
+<div
+  role="tabpanel"
+  id="plan-day-panel"
+  aria-labelledby={`plan-day-tab-${days[activeDay].id}`}
+>
+  {dayContent}
+</div>
+```
+
+Keep only the active day's meals in the DOM.
+
+- [ ] **Step 3: Name each meal region and its repeated controls**
 
 Use the existing `meal.name` directly:
 
@@ -121,7 +139,7 @@ Use the existing `meal.name` directly:
 
 Preserve visible copy and behavior.
 
-- [ ] **Step 3: Run the targeted test and verify GREEN**
+- [ ] **Step 4: Run the targeted test and verify GREEN**
 
 Run:
 
@@ -131,7 +149,7 @@ npx vitest run src/NutritionWorkspace.ui.test.tsx --reporter=basic
 
 Expected: all tests in the file pass with zero failures.
 
-- [ ] **Step 4: Run the focused regression set**
+- [ ] **Step 5: Run the focused regression set**
 
 Run:
 
@@ -141,7 +159,7 @@ npx vitest run src/NutritionWorkspace.ui.test.tsx src/lib/planDrafts.test.ts src
 
 Expected: zero failures.
 
-- [ ] **Step 5: Commit the implementation**
+- [ ] **Step 6: Commit the implementation**
 
 ```bash
 git add src/components/PlanEditor.tsx

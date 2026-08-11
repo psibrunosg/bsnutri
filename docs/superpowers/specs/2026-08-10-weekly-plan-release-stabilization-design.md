@@ -37,6 +37,7 @@ O commit `a56748c` introduziu abas laterais e a semana automática, mas a suíte
 - Cada painel de refeição será uma região nomeada pelo nome da refeição.
 - `Buscar alimento`, `Alimento` e `Gramas` incluirão o nome da refeição no nome acessível.
 - As abas laterais terão um `tablist` nomeado e painéis associados por `aria-controls` e `aria-labelledby`.
+- As abas de dia controlarão um painel do dia ativo por `aria-controls` e `aria-labelledby`.
 - A duplicação do primeiro dia produzirá `Segunda-feira copia`.
 
 ## Testes
@@ -44,12 +45,13 @@ O commit `a56748c` introduziu abas laterais e a semana automática, mas a suíte
 Os testes de `NutritionWorkspace.ui.test.tsx` navegarão pelas abas antes de interagir com conteúdo condicional. A cobertura deverá provar:
 
 1. sete dias e seis refeições no plano inicial;
-2. controles de alimento distinguíveis por refeição;
-3. persistência do estado ao alternar densidade;
-4. duplicação do dia e da refeição ativos;
-5. abertura, cópia e restauração de rascunhos;
-6. aplicação direta de modelo aos sete dias;
-7. publicação, lista de compras, g/kg e salvamento atômico no fluxo com abas.
+2. associação semântica entre a aba e o painel do dia ativo;
+3. controles de alimento distinguíveis por refeição;
+4. persistência do estado ao alternar densidade;
+5. duplicação do dia e da refeição ativos;
+6. abertura, cópia e restauração de rascunhos;
+7. aplicação direta de modelo aos sete dias;
+8. publicação, lista de compras, g/kg e salvamento atômico no fluxo com abas.
 
 ## Gates
 
