@@ -156,13 +156,13 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
         </button>
         {!contextCollapsed && (
           <>
-            <div className="editor-mode panel" role="tablist" style={{ marginBottom: '1rem' }}>
-              <button role="tab" aria-selected={sidebarTab === 'config'} className={sidebarTab === 'config' ? 'active' : ''} onClick={() => setSidebarTab('config')}>Configuração</button>
-              <button role="tab" aria-selected={sidebarTab === 'models'} className={sidebarTab === 'models' ? 'active' : ''} onClick={() => setSidebarTab('models')}>Modelos</button>
-              <button role="tab" aria-selected={sidebarTab === 'drafts'} className={sidebarTab === 'drafts' ? 'active' : ''} onClick={() => setSidebarTab('drafts')}>Planos</button>
-              <button role="tab" aria-selected={sidebarTab === 'assistant'} className={sidebarTab === 'assistant' ? 'active' : ''} onClick={() => setSidebarTab('assistant')}>Assistente</button>
+            <div className="editor-mode panel" role="tablist" aria-label="Seções do contexto do plano" style={{ marginBottom: '1rem' }}>
+              <button role="tab" id="plan-context-tab-config" aria-controls="plan-context-panel-config" aria-selected={sidebarTab === 'config'} className={sidebarTab === 'config' ? 'active' : ''} onClick={() => setSidebarTab('config')}>Configuração</button>
+              <button role="tab" id="plan-context-tab-models" aria-controls="plan-context-panel-models" aria-selected={sidebarTab === 'models'} className={sidebarTab === 'models' ? 'active' : ''} onClick={() => setSidebarTab('models')}>Modelos</button>
+              <button role="tab" id="plan-context-tab-drafts" aria-controls="plan-context-panel-drafts" aria-selected={sidebarTab === 'drafts'} className={sidebarTab === 'drafts' ? 'active' : ''} onClick={() => setSidebarTab('drafts')}>Planos</button>
+              <button role="tab" id="plan-context-tab-assistant" aria-controls="plan-context-panel-assistant" aria-selected={sidebarTab === 'assistant'} className={sidebarTab === 'assistant' ? 'active' : ''} onClick={() => setSidebarTab('assistant')}>Assistente</button>
             </div>
-            
+            <div role="tabpanel" id={`plan-context-panel-${sidebarTab}`} aria-labelledby={`plan-context-tab-${sidebarTab}`}>
             {sidebarTab === 'config' && (
               <section className="panel plan-basics">
                 <div className="panel-kicker">
@@ -256,13 +256,14 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
             {sidebarTab === 'assistant' && (
               <PlanAssistant state={assistant} setState={setAssistant} locked={locked} />
             )}
+            </div>
           </>
         )}
       </aside>
       <main className={`plan-editor ${editorMode}`}>
         <div className="day-tabs" role="tablist" aria-label="Dias do plano">
           {days.map((day, index) => (
-            <button role="tab" aria-selected={activeDay === index} className={activeDay === index ? 'active' : ''} key={day.id} onClick={() => setActiveDay(index)}>
+            <button role="tab" id={`plan-day-tab-${day.id}`} aria-controls="plan-day-panel" aria-selected={activeDay === index} className={activeDay === index ? 'active' : ''} key={day.id} onClick={() => setActiveDay(index)}>
               {day.label}
             </button>
           ))}
@@ -282,6 +283,7 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
             </>
           )}
         </div>
+        <div role="tabpanel" id="plan-day-panel" aria-labelledby={`plan-day-tab-${days[activeDay].id}`}>
         <div className="plan-export-actions">
           <button
             className="secondary"
@@ -370,6 +372,7 @@ export function PlanEditor({ catalog, planDraft, patients, organizationId, setMe
             </span>
           </div>
         )}
+        </div>
       </main>
       <aside className="plan-analysis" aria-label="Análise nutricional">
         <button
@@ -817,7 +820,7 @@ function EditableMealCard({
   const total = totalDay([meal])
   const filteredFoods = foods.filter(f => f.name.toLowerCase().includes(foodQuery.trim().toLowerCase()))
   return (
-    <section className="panel meal-editor">
+    <section className="panel meal-editor" aria-label={meal.name}>
       <div className="meal-heading">
         <input aria-label={`Nome da refeição ${index + 1}`} value={meal.name} readOnly={readOnly} onChange={e => setMeals(all => all.map(m => (m.id === meal.id ? { ...m, name: e.target.value } : m)))} />
         {!readOnly && (
@@ -833,8 +836,8 @@ function EditableMealCard({
       </div>
       {!readOnly && (
         <div className="add-food-row">
-          <input aria-label="Buscar alimento" value={foodQuery} onChange={e => setFoodQuery(e.target.value)} placeholder="Buscar alimento" />
-          <select aria-label="Alimento" value={food} onChange={e => setFood(e.target.value)}>
+          <input aria-label={`Buscar alimento no ${meal.name}`} value={foodQuery} onChange={e => setFoodQuery(e.target.value)} placeholder="Buscar alimento" />
+          <select aria-label={`Alimento no ${meal.name}`} value={food} onChange={e => setFood(e.target.value)}>
             <option value="">Escolha um alimento</option>
             {filteredFoods.map(f => (
               <option key={f.id} value={f.id}>
@@ -842,7 +845,7 @@ function EditableMealCard({
               </option>
             ))}
           </select>
-          <input aria-label="Gramas" type="number" min=".01" step=".01" value={grams} onChange={e => setGrams(Number(e.target.value))} />
+          <input aria-label={`Gramas no ${meal.name}`} type="number" min=".01" step=".01" value={grams} onChange={e => setGrams(Number(e.target.value))} />
           <button
             className="secondary"
             onClick={() => {
