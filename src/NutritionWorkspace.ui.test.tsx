@@ -222,6 +222,33 @@ describe('NutritionWorkspace editor modes', () => {
     expect(screen.getByRole('tabpanel', { name: 'Dia local' })).toBeInTheDocument()
   })
 
+  it('restaura o primeiro dia quando o dia ativo excede o intervalo', async () => {
+    const draft: LocalPlanDraft = {
+      patientId: 'patient-1',
+      title: 'Plano com índice excedente',
+      days: [
+        { id: 'day-first', label: 'Primeiro dia', kind: 'standard', meals: [{ id: 'meal-first', name: 'Café da manhã', items: [] }] },
+        { id: 'day-second', label: 'Segundo dia', kind: 'standard', meals: [{ id: 'meal-second', name: 'Jantar', items: [] }] },
+      ],
+      activeDay: 7,
+      targets: { energyKcal: 1800, proteinG: 120, carbohydrateG: 180, fatG: 60, fiberG: 25, waterMl: 2200 },
+      assistant: {
+        currentStep: 'objective', completedSteps: [], objective: 'Rascunho de consulta', clinicalPresets: [], priorityMicronutrients: [],
+        visibility: { showTotalKcal: true, showTotalMacros: true, showMealCalculations: false, showDiary: true },
+        targetRanges: {}, rangeJustification: '', mealDistributions: {},
+      },
+      editorMode: 'quick',
+      savedAt: '2026-08-10T15:00:00.000Z',
+    }
+    localStorage.setItem('bsnutri:plan-draft:org-1', JSON.stringify(draft))
+    render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Restaurar/i }))
+
+    expect(screen.getByRole('tab', { name: 'Primeiro dia' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Primeiro dia' })).toBeInTheDocument()
+  })
+
   it('salva automaticamente o rascunho em edicao', async () => {
     render(<NutritionWorkspace session={session as never} organizationId="org-1" patients={patients}/>)
 
