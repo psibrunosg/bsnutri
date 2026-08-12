@@ -68,7 +68,7 @@ body{background:var(--paper);color:var(--ink)}
 .loading,.auth-page,.app-shell,.patient-portal{background:var(--paper)}
 .loading-indicator{position:fixed;right:20px;bottom:20px;z-index:50;display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--border);border-radius:50%;background:#fff;box-shadow:0 8px 20px #164e6330;pointer-events:none}.loading-indicator span{width:17px;height:17px;border:3px solid #a5f3fc;border-top-color:var(--primary);border-radius:50%;animation:bsnutri-spin .75s linear infinite}@keyframes bsnutri-spin{to{transform:rotate(360deg)}}
 .auth-card,.panel,.patient-card,.modal,.portal-plan,.care-list article,.food-list article{background:var(--surface);border-color:#d9e1d3}
-.brand>span,.auth-card .brand-wolf{background:var(--paper) url('./assets/bsnutri-wolf.png') center / cover no-repeat;border:1px solid var(--sage);color:transparent;font-size:0}
+.brand>span,.auth-card .brand-wolf{background:var(--paper) url('./assets/bsnutri-wolf.jpg') center / cover no-repeat;border:1px solid var(--sage);color:transparent;font-size:0}
 .brand>span{border-radius:50%}
 .sidebar{background:linear-gradient(180deg,var(--primary-dark),var(--primary));box-shadow:12px 0 30px #2f5c5024}
 .sidebar .brand strong{font-size:0}
