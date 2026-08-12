@@ -21,7 +21,7 @@ Stack atual:
 
 ```bash
 npm ci
-copy .env.example .env.local
+cp .env.example .env.local   # Windows: copy .env.example .env.local
 ```
 
 Preencha `.env.local` com os dados publicos de **Project Settings > API** no Supabase:

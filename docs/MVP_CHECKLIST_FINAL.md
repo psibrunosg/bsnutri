@@ -37,7 +37,7 @@ Somente quando estas 3 jornadas estiverem provadas no deploy publicado:
 Em sexta-feira, 17 de julho de 2026:
 
 1. `npm run lint`: aprovado
-2. `npm test`: 3 arquivos e 9 testes aprovados
+2. `npm test`: 265 testes em 55 arquivos aprovados
 3. `npm run build`: aprovado com geracao de `dist/`
 
 ## Evidencia de producao mais recente

@@ -38,7 +38,7 @@ npm run build
 Esperado:
 
 1. lint verde
-2. 9 testes verdes
+2. 265 testes verdes em 55 arquivos
 3. build verde com `dist/`
 
 ## Etapa 2. Advisors de seguranca do banco

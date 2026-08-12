@@ -15,7 +15,7 @@ Status:
 | Item | Status | Evidencia atual | Falta para fechar |
 |---|---|---|---|
 | `npm run lint` verde | provado | validado em 17/07/2026 | manter verde apos publish final |
-| `npm test` verde | provado | 3 arquivos e 9 testes aprovados em 17/07/2026 | manter verde apos diff final |
+| `npm test` verde | provado | 265 testes em 55 arquivos aprovados em 17/07/2026 | manter verde apos diff final |
 | `npm run build` verde | provado | build aprovado com geracao de `dist/` em 17/07/2026 | manter verde apos diff final |
 | Suites SQL centrais validadas | provado | `bootstrap_organization`, `rls_isolation`, `publication_portal`, `appointments_adherence`, `mvp_smoke` ja validadas no remoto | repetir so se houver mudanca estrutural em SQL |
 | Fixture remota com usuarios reais pronta | provado | bind com `mvp2.profissional`, `mvp2.recepcao` e `mvp2.paciente` confirmado | usar no smoke final publicado |
