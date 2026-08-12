@@ -27,4 +27,8 @@ graphify-out/
 # Git worktrees (subagent-driven-development)
 .worktrees
 .claude-flow/
-.claude/worktrees/
+.claude/
+
+# Work temporaries
+work/*.tmp.sql
+work/*.patched.sql
