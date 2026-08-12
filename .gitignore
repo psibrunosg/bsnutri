@@ -32,3 +32,7 @@ graphify-out/
 # Work temporaries
 work/*.tmp.sql
 work/*.patched.sql
+
+# Local duplicates (tracked elsewhere)
+docs/CONTEXTO_DOMINIO_BSNUTRI.md
+docs/agents/MEMORIA_PERMANENTE_PLANEJAMENTO.md
