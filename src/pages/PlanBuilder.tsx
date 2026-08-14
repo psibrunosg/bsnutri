@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Check, Copy, FileDown, Layers, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, FileDown, Layers, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { useStore, uid } from "../lib/store";
 import type { PatientPlan, WeekPlan } from "../lib/types";
 import { MEAL_TYPES, WEEK_DAYS, dayTotals, emptyWeekPlan, planTotals } from "../lib/types";
