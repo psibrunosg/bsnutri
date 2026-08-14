@@ -62,8 +62,8 @@ export function Shell({ children }: { children: ReactNode }) {
             Sair
           </button>
           <div className="mt-3 border-t border-white/10 px-3.5 pt-4">
-            <p className="text-[13px] font-semibold">Dra. Helena Braga</p>
-            <p className="text-xs text-cream-100/50">Nutricionista · CRN-4 12.345</p>
+            <p className="text-[13px] font-semibold">Nutricionista</p>
+            <p className="text-xs text-cream-100/50">CRN a definir</p>
           </div>
         </div>
       </aside>
