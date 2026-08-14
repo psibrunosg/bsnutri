@@ -1,284 +1,38 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { CalendarDays, ListChecks, LogOut, Menu, Plus, Search, Settings, Users, Utensils, X } from 'lucide-react'
-import { isSupabaseConfigured, supabase } from './lib/supabase'
-import { NutritionWorkspace } from './NutritionWorkspace'
-import { PatientDetail } from './PatientDetail'
-import { ContentLibrary } from './ContentLibrary'
-import { PatientPortal } from './PatientPortal'
-import { CareWorkspace } from './CareWorkspace'
-import { SettingsWorkspace } from './SettingsWorkspace'
-import { useAppRoute } from './lib/useAppRoute'
-import './App.css'
-import './AuthIllustration.css'
+import { StoreProvider, useStore } from "./lib/store";
+import { Shell } from "./components/Shell";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Patients from "./pages/Patients";
+import PatientWizard from "./pages/PatientWizard";
+import PatientDetail from "./pages/PatientDetail";
+import PlanBuilder from "./pages/PlanBuilder";
+import Templates from "./pages/Templates";
+import Portal from "./pages/Portal";
 
-type Workspace = { organization_id: string; role: string; organizations: { name: string } | null }
-type Patient = { id: string; anonymous_code: string; full_name: string; email: string | null; birth_date: string | null; status: string }
-type PatientAccess = { id: string; full_name: string; anonymous_code: string; organization_id: string; professional_id: string }
-type Appointment = { id: string; status: string; starts_at: string; ends_at: string; modality: string; patients: { full_name: string }[] | null }
-type Alert = { id: string; severity: string; message: string; status: string; detected_at: string; patients: { full_name: string }[] | null }
-type Checkin = { id: string; occurred_on: string; state: string; patients: { full_name: string }[] | null; meals: { label: string }[] | null }
+function Root() {
+  const { loggedIn, view } = useStore();
 
-type AuthMode = 'login' | 'signup' | 'forgot' | 'recovery'
+  if (!loggedIn) return <Login />;
 
-function passwordRecoveryRedirect() {
-  return new URL(import.meta.env.BASE_URL, window.location.origin).toString()
-}
-
-export function AuthScreen({ recovery = false, onRecoveryComplete }: { recovery?: boolean; onRecoveryComplete?: () => void }) {
-  const [mode, setMode] = useState<AuthMode>(recovery ? 'recovery' : 'login')
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setBusy(true)
-    setMessage('')
-    const data = new FormData(event.currentTarget)
-    const email = String(data.get('email'))
-    const password = String(data.get('password'))
-    if (mode === 'forgot') {
-      const result = await supabase.auth.resetPasswordForEmail(email, { redirectTo: passwordRecoveryRedirect() })
-      setMessage(result.error?.message ?? 'Enviamos o link de recuperação. Confira sua caixa de entrada e o spam.')
-      setBusy(false)
-      return
-    }
-    if (mode === 'recovery') {
-      if (password !== String(data.get('passwordConfirmation'))) {
-        setMessage('As senhas não coincidem.')
-        setBusy(false)
-        return
-      }
-      const result = await supabase.auth.updateUser({ password })
-      setMessage(result.error?.message ?? 'Senha atualizada com sucesso.')
-      setBusy(false)
-      if (!result.error) onRecoveryComplete?.()
-      return
-    }
-    const result = mode === 'login'
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { data: { full_name: String(data.get('name')) } } })
-    setMessage(result.error?.message ?? (mode === 'signup' ? 'Cadastro realizado. Confira seu e-mail.' : ''))
-    setBusy(false)
+  let page: React.ReactNode;
+  switch (view.name) {
+    case "dashboard": page = <Dashboard />; break;
+    case "patients": page = <Patients />; break;
+    case "patient-new": page = <PatientWizard />; break;
+    case "patient-detail": page = <PatientDetail patientId={view.patientId} />; break;
+    case "plan-builder": page = <PlanBuilder planId={view.planId} patientId={view.patientId} templateId={view.templateId} />; break;
+    case "templates": page = <Templates />; break;
+    case "portal": page = <Portal patientId={view.patientId} />; break;
   }
 
-  return <main className="auth-page"><section className="auth-card">
-    <div className="brand"><span className="brand-wolf" role="img" aria-label="Rosto do lobo da BS Nutrição integrada"/><strong>BS Nutrição integrada</strong></div>
-    <h1>{mode === 'login' ? 'Bem-vindo de volta' : mode === 'signup' ? 'Crie sua conta' : mode === 'forgot' ? 'Recupere sua senha' : 'Defina uma nova senha'}</h1><p>{mode === 'login' ? 'Entre com seu e-mail e senha. No primeiro acesso, crie sua conta.' : mode === 'signup' ? 'Depois do cadastro, confirme o e-mail para liberar o acesso.' : mode === 'forgot' ? 'Informe seu e-mail para receber um link seguro.' : 'Crie uma senha com pelo menos 8 caracteres.'}</p>
-    {!isSupabaseConfigured && <div className="notice">Configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.</div>}
-    <form onSubmit={submit}>{mode === 'signup' && <label>Nome completo<input name="name" required minLength={2}/></label>}
-      {mode !== 'recovery' && <label>E-mail<input name="email" type="email" autoComplete="email" required/></label>}
-      {mode !== 'forgot' && <label>Senha<input name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} required/></label>}
-      {mode === 'recovery' && <label>Confirme a nova senha<input name="passwordConfirmation" type="password" autoComplete="new-password" minLength={8} required/></label>}
-      {message && <p className="form-message" role="status">{message}</p>}<button className="primary" disabled={busy || !isSupabaseConfigured}>{busy ? 'Aguarde...' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Cadastrar' : mode === 'forgot' ? 'Enviar link de recuperação' : 'Atualizar senha'}</button>
-    </form>{mode === 'login' && <div className="auth-actions"><button type="button" className="primary" onClick={() => setMode('signup')}>Criar minha conta</button><button type="button" className="link" onClick={() => setMode('forgot')}>Esqueci minha senha</button></div>}{mode === 'signup' && <button type="button" className="link" onClick={() => setMode('login')}>Já tenho uma conta</button>}{mode === 'forgot' && <button type="button" className="link" onClick={() => setMode('login')}>Voltar para entrar</button>}
-  </section></main>
+  const bare = view.name === "patient-new";
+  return bare ? <div className="min-h-screen bg-background px-6 py-8">{page}</div> : <Shell>{page}</Shell>;
 }
 
-function Bootstrap({ session, onReady }: { session: Session; onReady: () => void }) {
-  const [error, setError] = useState('')
-
-  async function create(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError('')
-    const data = new FormData(event.currentTarget)
-    const fullName = String(data.get('name'))
-    const organizationName = String(data.get('organization'))
-    const slug = `${organizationName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${crypto.randomUUID().slice(0, 6)}`
-    const { error } = await supabase.rpc('bootstrap_organization', { full_name_input: fullName, organization_name_input: organizationName, organization_slug_input: slug })
-    if (error) return setError(error.message)
-    onReady()
-  }
-
-  return <main className="auth-page"><section className="auth-card"><div className="brand"><span className="brand-wolf" role="img" aria-label="Rosto do lobo da BS Nutrição integrada"/><strong>BS Nutrição integrada</strong></div><h1>Prepare seu espaço</h1><p>Esses dados identificam você e sua clínica.</p><form onSubmit={create}><label>Seu nome<input name="name" defaultValue={session.user.user_metadata.full_name ?? ''} required/></label><label>Nome da clínica<input name="organization" defaultValue="Clínica BS" required/></label>{error && <p className="form-message">{error}</p>}<button className="primary">Criar espaço</button></form></section></main>
+export default function App() {
+  return (
+    <StoreProvider>
+      <Root />
+    </StoreProvider>
+  );
 }
-
-function DashboardSummary({ total, active, withEmail, shown, query }: { total: number; active: number; withEmail: number; shown: number; query: string }) {
-  return <section className="dashboard-summary">
-    <article><small>Pacientes</small><strong>{total}</strong><span>{active} ativos</span></article>
-    <article><small>Contato</small><strong>{withEmail}</strong><span>com e-mail cadastrado</span></article>
-    <article><small>Busca atual</small><strong>{shown}</strong><span>{query ? 'filtrados por nome ou código' : 'visíveis na lista'}</span></article>
-  </section>
-}
-
-function TodayPanel({ appointments, alerts, checkins, onReviewAppointment, onAlertAction }: { appointments: Appointment[]; alerts: Alert[]; checkins: Checkin[]; onReviewAppointment: (id: string, status: 'approved' | 'rejected', modality: string) => void; onAlertAction: (id: string) => void }) {
-  return <section className="today-panel">
-    <article className="panel">
-      <h2>Hoje</h2>
-      <div className="today-grid">
-        <div><small>Consultas</small><strong>{appointments.length}</strong><span>{appointments.filter(a => a.status === 'requested').length} pendentes</span></div>
-        <div><small>Alertas</small><strong>{alerts.length}</strong><span>{alerts.filter(a => a.status === 'open').length} abertos</span></div>
-        <div><small>Check-ins</small><strong>{checkins.length}</strong><span>{checkins.filter(c => c.state !== 'completed').length} fora do concluído</span></div>
-      </div>
-    </article>
-    <article className="panel">
-      <h2>Pendências de agora</h2>
-      {appointments.length ? appointments.slice(0, 4).map(item => <div className="today-item" key={item.id}><p><strong>{item.patients?.[0]?.full_name ?? 'Paciente'}</strong> · {new Date(item.starts_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · {item.status === 'requested' ? 'aguardando' : item.status}</p>{item.status === 'requested' && <div className="today-actions"><button className="secondary" onClick={() => onReviewAppointment(item.id, 'approved', item.modality)}>Aprovar</button><button className="secondary" onClick={() => onReviewAppointment(item.id, 'rejected', item.modality)}>Recusar</button></div>}</div>) : <p className="muted">Nenhuma consulta para hoje.</p>}
-      {alerts.length ? <div className="today-list">{alerts.slice(0, 3).map(item => <div className="today-item" key={item.id}><p><strong>{item.patients?.[0]?.full_name ?? 'Paciente'}</strong> · {item.message}</p>{item.status === 'open' && <div className="today-actions"><button className="secondary" onClick={() => onAlertAction(item.id)}>Reconhecer</button></div>}</div>)}</div> : null}
-    </article>
-  </section>
-}
-
-function PatientDirectory({ patients, query, setQuery, onSelect, onCreate, error, filteredLabel }: { patients: Patient[]; query: string; setQuery: (value: string) => void; onSelect: (patient: Patient) => void; onCreate: () => void; error: string; filteredLabel: string }) {
-  return <>
-    <section className="toolbar"><div className="search"><Search/><input aria-label="Buscar pacientes" placeholder="Buscar por nome ou código" value={query} onChange={e => setQuery(e.target.value)}/></div><button className="primary compact" onClick={onCreate}><Plus/>Novo paciente</button><span>{filteredLabel}</span></section>
-    {error && <div className="notice error">{error}</div>}
-    <section className="patient-grid">{patients.map(p => <button className="patient-card" key={p.id} onClick={() => onSelect(p)}><div className="avatar">{p.full_name.slice(0,2).toUpperCase()}</div><div><small>{p.anonymous_code}</small><h2>{p.full_name}</h2><p>{p.email || 'E-mail não informado'}</p></div><span className="status">Ativo</span></button>)}{patients.length === 0 && <div className="empty"><Users/><h2>Nenhum paciente encontrado</h2><p>Cadastre o primeiro paciente para iniciar o acompanhamento.</p></div>}</section>
-  </>
-}
-
-function PatientCreateModal({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
-  if (!open) return null
-  return <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true"><header><h2>Novo paciente</h2><button aria-label="Fechar" onClick={onClose}><X/></button></header><form onSubmit={onSubmit}><label>Nome completo<input name="name" required minLength={2}/></label><label>E-mail<input name="email" type="email"/></label><label>Data de nascimento<input name="birthDate" type="date"/></label><div className="actions"><button type="button" className="secondary" onClick={onClose}>Cancelar</button><button className="primary">Cadastrar</button></div></form></section></div>
-}
-
-function Dashboard({ session, workspace }: { session: Session; workspace: Workspace }) {
-  const isReceptionist = workspace.role === 'receptionist'
-  const [patients, setPatients] = useState<Patient[]>([])
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [alerts, setAlerts] = useState<Alert[]>([])
-  const [checkins, setCheckins] = useState<Checkin[]>([])
-  const [route, navigateRoute] = useAppRoute(isReceptionist ? 'care' : 'patients')
-  const page = route.page
-  const selected = patients.find(p => p.id === route.patientId) ?? null
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const [menu, setMenu] = useState(false)
-  const [error, setError] = useState('')
-
-  const load = useCallback(async () => {
-    const today = new Date().toISOString().slice(0, 10)
-    const [p, a, l, c] = await Promise.all([
-      isReceptionist
-        ? Promise.resolve({ data: [], error: null })
-        : supabase.from('patients').select('id,anonymous_code,full_name,email,birth_date,status').eq('organization_id', workspace.organization_id).order('full_name'),
-      supabase.from('appointments').select('id,status,starts_at,ends_at,modality,patients(full_name)').eq('organization_id', workspace.organization_id).gte('starts_at', `${today}T00:00:00`).lt('starts_at', `${today}T23:59:59`).order('starts_at'),
-      isReceptionist
-        ? Promise.resolve({ data: [], error: null })
-        : supabase.from('adherence_alerts').select('id,severity,message,status,detected_at,patients(full_name)').eq('organization_id', workspace.organization_id).eq('status', 'open').order('detected_at', { ascending: false }).limit(5),
-      isReceptionist
-        ? Promise.resolve({ data: [], error: null })
-        : supabase.from('meal_checkins').select('id,occurred_on,state,patients(full_name),meals(label)').eq('organization_id', workspace.organization_id).eq('occurred_on', today).order('occurred_on', { ascending: false }).limit(5),
-    ])
-    const first = p.error ?? a.error ?? l.error ?? c.error
-    if (first) setError(first.message)
-    else {
-      setPatients(p.data ?? [])
-      setAppointments((a.data ?? []) as Appointment[])
-      setAlerts((l.data ?? []) as Alert[])
-      setCheckins((c.data ?? []) as Checkin[])
-    }
-  }, [isReceptionist, workspace.organization_id])
-
-  useEffect(() => { void load() }, [load])
-  useEffect(() => {
-    if (isReceptionist && page !== 'care') navigateRoute({ page: 'care', patientId: null }, { replace: true })
-  }, [isReceptionist, page, navigateRoute])
-
-  async function addPatient(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const data = new FormData(event.currentTarget)
-    const { error } = await supabase.from('patients').insert({ organization_id: workspace.organization_id, professional_id: session.user.id, created_by: session.user.id, anonymous_code: `P${String(patients.length + 1).padStart(3, '0')}`, full_name: String(data.get('name')), email: String(data.get('email')) || null, birth_date: String(data.get('birthDate')) || null })
-    if (error) setError(error.message)
-    else { setOpen(false); await load() }
-  }
-
-  async function reviewAppointment(id: string, status: 'approved' | 'rejected', modality: string) {
-    let meetingUrl: string | null = null
-    if (status === 'approved' && modality === 'online') {
-      const provided = window.prompt('Informe o link da teleconsulta:')?.trim()
-      if (!provided) return
-      try {
-        const parsed = new URL(provided)
-        if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error()
-      } catch {
-        setError('Informe um link válido, começando com https://.')
-        return
-      }
-      meetingUrl = provided
-    }
-    const { error } = await supabase.rpc('review_appointment', { target_id: id, target_status: status, target_staff_note: null, target_meeting_url: meetingUrl })
-    if (error) setError(error.message)
-    else await load()
-  }
-
-  async function acknowledgeAlert(id: string) {
-    const { error } = await supabase.rpc('update_alert_status', { target_id: id, target_status: 'acknowledged' })
-    if (error) setError(error.message)
-    else await load()
-  }
-
-  const shown = patients.filter(p => `${p.full_name} ${p.anonymous_code}`.toLowerCase().includes(query.toLowerCase()))
-  const activePatients = patients.filter(patient => patient.status === 'active').length
-  const withEmail = patients.filter(patient => Boolean(patient.email)).length
-
-  return <div className="app-shell"><aside className={menu ? 'sidebar open' : 'sidebar'}><div className="brand inverse"><span>BS</span><strong>BSNutri</strong><button aria-label="Fechar menu" onClick={() => setMenu(false)}><X/></button></div><nav>{!isReceptionist && <button className={page === 'patients' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'patients', patientId: null }); setMenu(false) }}><Users/>Pacientes</button>}{!isReceptionist && <button className={page === 'nutrition' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'nutrition', patientId: null }); setMenu(false) }}><Utensils/>Nutrição e planos</button>}{!isReceptionist && <button className={page === 'content' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'content', patientId: null }); setMenu(false) }}><ListChecks/>Biblioteca</button>}{!isReceptionist && <button className={page === 'settings' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'settings', patientId: null }); setMenu(false) }}><Settings/>Configurações</button>}<button className={page === 'care' ? 'active' : ''} onClick={() => { navigateRoute({ page: 'care', patientId: null }); setMenu(false) }}><CalendarDays/>Agenda e adesão</button></nav><button className="logout" onClick={() => supabase.auth.signOut()}><LogOut/>Sair</button></aside>
-    <main className="content"><header><button className="menu-button" aria-label="Abrir menu" onClick={() => setMenu(true)}><Menu/></button><div><small>{workspace.organizations?.name}</small><h1>{selected ? 'Prontuário nutricional' : page === 'nutrition' ? 'Nutrição e planos' : page === 'care' ? 'Agenda e adesão' : page === 'content' ? 'Biblioteca profissional' : page === 'settings' ? 'Configurações' : 'Pacientes'}</h1></div></header>
-      {page === 'nutrition' && !isReceptionist ? <NutritionWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : page === 'content' && !isReceptionist ? <ContentLibrary session={session} organizationId={workspace.organization_id} patients={patients} canEditBrand={workspace.role==='owner'||workspace.role==='admin'}/> : page === 'settings' && !isReceptionist ? <SettingsWorkspace organizationId={workspace.organization_id}/> : page === 'care' ? <CareWorkspace session={session} organizationId={workspace.organization_id} patients={patients}/> : selected && !isReceptionist ? <PatientDetail patient={selected} session={session} workspace={workspace} onBack={() => navigateRoute({ page: 'patients', patientId: null })}/> : !isReceptionist ? <>
-      <DashboardSummary total={patients.length} active={activePatients} withEmail={withEmail} shown={shown.length} query={query}/>
-      <TodayPanel appointments={appointments} alerts={alerts} checkins={checkins} onReviewAppointment={reviewAppointment} onAlertAction={acknowledgeAlert}/>
-      <PatientDirectory patients={shown} query={query} setQuery={setQuery} onSelect={patient => navigateRoute({ page: 'patients', patientId: patient.id })} onCreate={() => setOpen(true)} error={error} filteredLabel={`${shown.length} paciente${shown.length === 1 ? '' : 's'}`}/>
-    </> : null}
-    </main><PatientCreateModal open={open && !isReceptionist} onClose={() => setOpen(false)} onSubmit={addPatient}/></div>
-}
-
-export function App() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [ready, setReady] = useState(false)
-  const [workspace, setWorkspace] = useState<Workspace | null>(null)
-  const [patientAccess, setPatientAccess] = useState<PatientAccess | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [recoveringPassword, setRecoveringPassword] = useState(() => window.location.hash.includes('type=recovery'))
-
-  async function loadWorkspace(current: Session) {
-    setLoading(true)
-    const { data } = await supabase.from('memberships').select('organization_id,role,organizations(name)').eq('user_id', current.user.id).eq('status', 'active').limit(1).maybeSingle()
-    if (data) {
-      setWorkspace(data as unknown as Workspace)
-      setPatientAccess(null)
-      setReady(true)
-      setLoading(false)
-      return
-    }
-    await supabase.from('profiles').upsert({ id: current.user.id, full_name: current.user.user_metadata.full_name ?? current.user.email ?? 'Paciente' }, { onConflict: 'id' })
-    const linked = await supabase.from('patients').select('id,full_name,anonymous_code,organization_id,professional_id').eq('patient_user_id', current.user.id).limit(1).maybeSingle()
-    if (!linked.data) await supabase.rpc('claim_patient_access')
-    const linkedAfterClaim = linked.data ? linked : await supabase.from('patients').select('id,full_name,anonymous_code,organization_id,professional_id').eq('patient_user_id', current.user.id).limit(1).maybeSingle()
-    setWorkspace(null)
-    setPatientAccess(linkedAfterClaim.data as PatientAccess | null)
-    setReady(Boolean(linkedAfterClaim.data))
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      if (data.session && !recoveringPassword) void loadWorkspace(data.session)
-      else setLoading(false)
-    })
-    const { data } = supabase.auth.onAuthStateChange((event, next) => {
-      setSession(next)
-      if (event === 'PASSWORD_RECOVERY') {
-        setRecoveringPassword(true)
-        setLoading(false)
-        return
-      }
-      if (next && !recoveringPassword) void loadWorkspace(next)
-      else if (!next) {
-        setWorkspace(null)
-        setPatientAccess(null)
-        setLoading(false)
-      }
-    })
-    return () => data.subscription.unsubscribe()
-  }, [recoveringPassword])
-
-  if (recoveringPassword) return <AuthScreen recovery onRecoveryComplete={() => { setRecoveringPassword(false); window.history.replaceState({}, document.title, passwordRecoveryRedirect()) }}/>
-  if (!session) return <AuthScreen/>
-  const indicator=loading?<div className="loading-indicator" role="status" aria-label="Atualizando dados"><span/></div>:null
-  if (patientAccess) return <><PatientPortal patient={patientAccess}/>{indicator}</>
-  if (!ready || !workspace) return <><Bootstrap session={session} onReady={() => loadWorkspace(session)}/>{indicator}</>
-  return <><Dashboard session={session} workspace={workspace}/>{indicator}</>
-}
-
-export default App
