@@ -24,13 +24,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm test
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_PROF_EMAIL: ${{ secrets.SUPABASE_PROF_EMAIL }}
+          SUPABASE_PROF_PASSWORD: ${{ secrets.SUPABASE_PROF_PASSWORD }}
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name == 'push'
         with:

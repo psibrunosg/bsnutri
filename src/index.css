@@ -1,197 +1,125 @@
-/* Vendored from tailwindcss@4.3.2 preflight.css (global CSS reset). Not "unused" —
-   this is what `@import "tailwindcss"` used to provide before that dependency was
-   removed in 32e2d4a; keep it even though no Tailwind utility classes are used.
-   `--theme(...)` font-family/font-feature/font-variation lookups were inlined to
-   their default fallback values since this project never defined a custom theme. */
-*,
-::after,
-::before,
-::backdrop,
-::file-selector-button {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  border: 0 solid;
-}
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
-html,
-:host {
-  line-height: 1.5;
-  -webkit-text-size-adjust: 100%;
-  tab-size: 4;
-  font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  font-feature-settings: normal;
-  font-variation-settings: normal;
-  -webkit-tap-highlight-color: transparent;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-hr {
-  height: 0;
-  color: inherit;
-  border-top-width: 1px;
-}
-
-abbr:where([title]) {
-  -webkit-text-decoration: underline dotted;
-  text-decoration: underline dotted;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-size: inherit;
-  font-weight: inherit;
-}
-
-a {
-  color: inherit;
-  -webkit-text-decoration: inherit;
-  text-decoration: inherit;
-}
-
-b, strong {
-  font-weight: bolder;
-}
-
-code, kbd, samp, pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-feature-settings: normal;
-  font-variation-settings: normal;
-  font-size: 1em;
-}
-
-small {
-  font-size: 80%;
-}
-
-sub, sup {
-  font-size: 75%;
-  line-height: 0;
-  position: relative;
-  vertical-align: baseline;
-}
-
-sub { bottom: -0.25em; }
-sup { top: -0.5em; }
-
-table {
-  text-indent: 0;
-  border-color: inherit;
-  border-collapse: collapse;
-}
-
-:-moz-focusring {
-  outline: auto;
-}
-
-progress {
-  vertical-align: baseline;
-}
-
-summary {
-  display: list-item;
-}
-
-ol, ul, menu {
-  list-style: none;
-}
-
-img, svg, video, canvas, audio, iframe, embed, object {
-  display: block;
-  vertical-align: middle;
-}
-
-img, video {
-  max-width: 100%;
-  height: auto;
-}
-
-button, input, select, optgroup, textarea, ::file-selector-button {
-  font: inherit;
-  font-feature-settings: inherit;
-  font-variation-settings: inherit;
-  letter-spacing: inherit;
-  color: inherit;
-  border-radius: 0;
-  background-color: transparent;
-  opacity: 1;
-}
-
-:where(select:is([multiple], [size])) optgroup {
-  font-weight: bolder;
-}
-
-:where(select:is([multiple], [size])) optgroup option {
-  padding-inline-start: 20px;
-}
-
-::file-selector-button {
-  margin-inline-end: 4px;
-}
-
-::placeholder {
-  opacity: 1;
-}
-
-@supports (not (-webkit-appearance: -apple-pay-button)) or (contain-intrinsic-size: 1px) {
-  ::placeholder {
-    color: color-mix(in oklab, currentcolor 50%, transparent);
+@layer base {
+  :root {
+    --background: 45 33% 96%;
+    --foreground: 96 18% 14%;
+    --card: 48 60% 99%;
+    --card-foreground: 96 18% 14%;
+    --popover: 48 60% 99%;
+    --popover-foreground: 96 18% 14%;
+    --primary: 104 22% 33%;
+    --primary-foreground: 48 60% 98%;
+    --secondary: 45 30% 93%;
+    --secondary-foreground: 96 18% 18%;
+    --muted: 45 24% 92%;
+    --muted-foreground: 60 5% 44%;
+    --accent: 39 64% 57%;
+    --accent-foreground: 96 25% 14%;
+    --destructive: 8 62% 44%;
+    --destructive-foreground: 48 60% 98%;
+    --border: 44 22% 86%;
+    --input: 44 22% 84%;
+    --ring: 104 22% 33%;
+    --radius: 0.75rem;
+    --sidebar-background: 96 22% 16%;
+    --sidebar-foreground: 45 30% 90%;
+    --sidebar-primary: 39 64% 57%;
+    --sidebar-primary-foreground: 96 25% 12%;
+    --sidebar-accent: 96 18% 22%;
+    --sidebar-accent-foreground: 45 30% 92%;
+    --sidebar-border: 96 14% 24%;
+    --sidebar-ring: 39 64% 57%;
   }
 }
 
-textarea {
-  resize: vertical;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01";
+  }
+  ::selection {
+    background: #d9a44a33;
+  }
 }
 
-::-webkit-search-decoration {
+@layer components {
+  .font-display {
+    font-family: "Fraunces", Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium uppercase;
+    letter-spacing: 0.12em;
+    color: #85591d;
+  }
+  .card-warm {
+    @apply rounded-2xl border border-border bg-card shadow-warm;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-forest-500 px-4 py-2.5 text-sm font-semibold text-cream-50 shadow-warm transition-all duration-150 hover:-translate-y-0.5 hover:bg-forest-600 hover:shadow-warm-md active:translate-y-0 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-amber {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-forest-900 shadow-warm transition-all duration-150 hover:-translate-y-0.5 hover:bg-amber-300 hover:shadow-warm-md active:translate-y-0;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-all duration-150 hover:-translate-y-0.5 hover:border-forest-300 hover:shadow-warm;
+  }
+  .input-warm {
+    @apply w-full rounded-xl border border-input bg-white/70 px-3.5 py-2.5 text-sm outline-none transition-all placeholder:text-muted-foreground/70 focus:border-forest-400 focus:ring-2 focus:ring-forest-100;
+  }
+  .label-warm {
+    @apply mb-1.5 block text-[13px] font-medium text-foreground/80;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-cream-100 px-3 py-1 text-xs font-medium;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d8d0bc; border-radius: 8px; border: 2px solid #faf8f2; }
+::-webkit-scrollbar-thumb:hover { background: #c4b999; }
+
+/* Range slider styling */
+input[type="range"].slider-warm {
   -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #4a6741 var(--fill, 50%), #e9e1cd var(--fill, 50%));
+  outline: none;
+}
+input[type="range"].slider-warm::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fffdf8;
+  border: 3px solid #4a6741;
+  box-shadow: 0 2px 8px rgba(40, 55, 31, 0.18);
+  cursor: grab;
+  transition: transform 0.15s ease;
+}
+input[type="range"].slider-warm::-webkit-slider-thumb:hover { transform: scale(1.15); }
+input[type="range"].slider-warm::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.05); }
+input[type="range"].slider-warm::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fffdf8; border: 3px solid #4a6741;
+  box-shadow: 0 2px 8px rgba(40, 55, 31, 0.18); cursor: grab;
 }
 
-::-webkit-date-and-time-value {
-  min-height: 1lh;
-  text-align: inherit;
+@media print {
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+  #print-area { position: absolute; inset: 0; }
 }
-
-::-webkit-datetime-edit {
-  display: inline-flex;
-}
-
-::-webkit-datetime-edit-fields-wrapper {
-  padding: 0;
-}
-
-::-webkit-datetime-edit,
-::-webkit-datetime-edit-year-field,
-::-webkit-datetime-edit-month-field,
-::-webkit-datetime-edit-day-field,
-::-webkit-datetime-edit-hour-field,
-::-webkit-datetime-edit-minute-field,
-::-webkit-datetime-edit-second-field,
-::-webkit-datetime-edit-millisecond-field,
-::-webkit-datetime-edit-meridiem-field {
-  padding-block: 0;
-}
-
-::-webkit-calendar-picker-indicator {
-  line-height: 1;
-}
-
-:-moz-ui-invalid {
-  box-shadow: none;
-}
-
-button,
-input:where([type='button'], [type='reset'], [type='submit']),
-::file-selector-button {
-  appearance: button;
-}
-
-::-webkit-inner-spin-button,
-::-webkit-outer-spin-button {
-  height: auto;
-}
-
-[hidden]:where(:not([hidden='until-found'])) {
-  display: none !important;
-}
-
-:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-synthesis: none; text-rendering: optimizeLegibility; }
-body { margin: 0; min-width: 320px; min-height: 100vh; }
