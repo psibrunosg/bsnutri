@@ -136,10 +136,11 @@ function FoodPickerModal({ organizationId, dataSource, dayLabel, mealName, onPic
   )
 }
 
-function TemplatesModal({ organizationId, dataSource, patientName, onApply, onClose }: {
+function TemplatesModal({ organizationId, dataSource, patientName, canReview, onApply, onClose }: {
   organizationId: string
   dataSource: PlanTemplateDataSource
   patientName: string
+  canReview: boolean
   onApply: (templateId: string) => void
   onClose: () => void
 }) {
@@ -159,6 +160,11 @@ function TemplatesModal({ organizationId, dataSource, patientName, onApply, onCl
 
   useEffect(() => { void load() }, [load])
 
+  async function approve(id: string) {
+    const response = await dataSource.reviewTemplate(id, 'approved', 'Revisado e liberado na biblioteca do editor.')
+    if (!response.error) await load()
+  }
+
   return (
     <Modal title={`Aplicar modelo a ${patientName}`} subtitle="Biblioteca de modelos" onClose={onClose} wide>
       <div className="relative mb-4">
@@ -171,8 +177,8 @@ function TemplatesModal({ organizationId, dataSource, patientName, onApply, onCl
         {templates.map((template) => {
           const usable = isTemplateUsable(template)
           return (
+            <div key={template.id}>
             <button
-              key={template.id}
               type="button"
               disabled={!usable}
               onClick={() => onApply(template.id)}
@@ -194,6 +200,16 @@ function TemplatesModal({ organizationId, dataSource, patientName, onApply, onCl
                   : <p className="text-xs font-medium text-amber-700">Pendente de revisão</p>}
               </div>
             </button>
+            {!usable && canReview && (
+              <button
+                type="button"
+                className="btn-ghost mt-1 w-full !py-1.5 !text-xs"
+                onClick={() => void approve(template.id)}
+              >
+                Revisar e liberar este modelo
+              </button>
+            )}
+            </div>
           )
         })}
         {!loading && templates.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum modelo encontrado.</p>}
@@ -213,10 +229,11 @@ export interface PlanBuilderProps {
   templateSource: PlanTemplateDataSource
   planId?: string
   patientId?: string
+  canReview: boolean
   onBack: () => void
 }
 
-export default function PlanBuilder({ organizationId, userId, patients, catalogSource, templateSource, planId, patientId, onBack }: PlanBuilderProps) {
+export default function PlanBuilder({ organizationId, userId, patients, catalogSource, templateSource, planId, patientId, canReview, onBack }: PlanBuilderProps) {
   const [message, setMessage] = useState('')
   const [picker, setPicker] = useState<{ dayIndex: number; mealId: string; dayLabel: string; mealName: string } | null>(null)
   const [showTemplates, setShowTemplates] = useState(false)
@@ -441,6 +458,7 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
           organizationId={organizationId}
           dataSource={templateSource}
           patientName={patient?.fullName ?? 'paciente'}
+          canReview={canReview}
           onApply={(templateId) => void applyTemplate(templateId)}
           onClose={() => setShowTemplates(false)}
         />
@@ -455,6 +473,8 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
             setTargets={plan.setTargets}
             days={plan.days}
             disabled={readOnly}
+            suggestion={plan.suggestedTargets}
+            onApplySuggestion={plan.applySuggestedTargets}
           />
         </Modal>
       )}

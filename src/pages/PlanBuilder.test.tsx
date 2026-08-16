@@ -43,6 +43,7 @@ function setup() {
       patients={[{ id: 'p1', anonymousCode: 'P0001', fullName: 'Mariana Lopes', email: null, phone: null, birthDate: null, status: 'active', tags: [], objective: null, measurements: [] }]}
       catalogSource={catalogSource}
       templateSource={templateSource}
+      canReview
       onBack={vi.fn()}
     />,
   )

@@ -42,3 +42,6 @@ work/*.patched.sql
 # Local duplicates (tracked elsewhere)
 docs/CONTEXTO_DOMINIO_BSNUTRI.md
 docs/agents/MEMORIA_PERMANENTE_PLANEJAMENTO.md
+
+# PDFs gerados por teste ou exportação local
+*.pdf
