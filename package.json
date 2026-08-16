@@ -4,12 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/sync-catalog.mjs",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run verify:artifact",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:artifact": "node scripts/verify-build-artifact.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

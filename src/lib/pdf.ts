@@ -104,53 +104,6 @@ export function exportPlanPdf(plan: PatientPlan, patient: Patient, foods: Food[]
   doc.save(`plano-alimentar-${patient.name.toLowerCase().replace(/\s+/g, "-")}.pdf`);
 }
 
-import type { EquivList } from "./realdata";
-
-export function exportEquivalencyPdf(patient: Patient, lists: EquivList[]) {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const pageW = doc.internal.pageSize.getWidth();
-  doc.setFillColor(...GREEN);
-  doc.rect(0, 0, pageW, 26, "F");
-  doc.setTextColor(250, 248, 242);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("BSNutri", 14, 11);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text("Mapa de substituições", 14, 18);
-
-  doc.setTextColor(...DARK);
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text(patient.name, 14, 36);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.5);
-  doc.setTextColor(110, 105, 92);
-  doc.text("Trocas autônomas aprovadas pelo seu nutricionista — escolha qualquer opção do grupo:", 14, 43);
-
-  autoTable(doc, {
-    startY: 50,
-    head: [["Grupo de substituição", "Opções equivalentes"]],
-    body: lists.map((l) => [
-      `${l.title}\n${l.description}`,
-      l.items.map((i) => `${i.description} — ${i.measure ?? `${i.grams ?? ""} g`} (≈${Math.round(i.kcal ?? 0)} kcal)`).join("\n"),
-    ]),
-    styles: { fontSize: 8.2, cellPadding: 2.6, textColor: DARK, valign: "top" },
-    headStyles: { fillColor: GREEN, textColor: [250, 248, 242], fontStyle: "bold" },
-    alternateRowStyles: { fillColor: CREAM },
-    columnStyles: { 0: { fontStyle: "bold", cellWidth: 46, textColor: GREEN } },
-    margin: { left: 14, right: 14 },
-  });
-
-  doc.setFillColor(...AMBER);
-  doc.rect(0, 291, pageW, 1.2, "F");
-  doc.setFontSize(8);
-  doc.setTextColor(133, 89, 29);
-  doc.text("Documento gerado pelo BSNutri · Uso pessoal do paciente", pageW / 2, 295, { align: "center" });
-
-  doc.save(`mapa-de-substituicoes-${patient.name.toLowerCase().replace(/\s+/g, "-")}.pdf`);
-}
-
 export function exportSubstitutionMapPdf(patient: Patient, foods: Food[]) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
