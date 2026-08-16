@@ -192,6 +192,28 @@ As suítes que aplicam modelo (`plan_template_snapshot_apply`,
 `plan_template_profiles`, `post_mvp_market_features`) passaram a aprovar o modelo
 antes de aplicá-lo, refletindo o novo contrato da Task 4.
 
-## Pendente para o corte final
+## Corte final — executado em 2026-08-16
 
-- Publicação no GitHub Pages continua represada até a aprovação.
+1. **Smoke de ponta a ponta** contra o Supabase local, pelo navegador: conta criada,
+   organização criada, paciente cadastrado (uma transação: paciente + avaliação +
+   antropometria + auditoria), plano salvo, autosave no servidor, revisão e
+   publicação. `localStorage` terminou apenas com o token de sessão.
+   O smoke revelou duas falhas que os testes não pegavam:
+   - a publicação era **inalcançável pela interface** (faltava o assistente clínico);
+   - `--muted-foreground` reprovava no contraste WCAG AA (4,25:1).
+2. **Banco de produção migrado**: as 6 migrations aplicadas em
+   `qjclholskxmtxqqentuz`, confirmadas com `migration list` (`local == remote`).
+3. **Publicado no GitHub Pages**: merge em `main`, workflow verde,
+   https://psibrunosg.github.io/bsnutri/ servindo o app novo e conversando com o
+   Supabase remoto.
+
+## Consequências em produção a acompanhar
+
+- **Todo modelo de plano existente entrou como `needs_review`.** Nenhum pode ser
+  aplicado a paciente até revisão e aprovação explícitas. Não foi possível contar
+  quantos são sem uma sessão autenticada: o RLS bloqueia leitura anônima.
+- **Os portões de qualidade voltaram a valer.** Publicar exige metas de energia,
+  macros, fibra e água, além de micronutrientes prioritários.
+- **Cache do service worker**: quem já tinha o app aberto pode ver a versão antiga
+  no primeiro carregamento. O `sw.js` se desregistra sozinho no `activate`, então
+  o segundo carregamento traz a versão nova. Foi o que aconteceu na verificação.
