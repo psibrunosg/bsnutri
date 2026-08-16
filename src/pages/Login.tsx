@@ -77,7 +77,7 @@ export default function Login({ recovery = false, onRecoveryComplete }: LoginPro
   }
 
   const title = mode === 'login'
-    ? 'Bem-vinda de volta'
+    ? 'Que bom ter você de volta'
     : mode === 'signup'
       ? 'Crie sua conta'
       : mode === 'forgot'
