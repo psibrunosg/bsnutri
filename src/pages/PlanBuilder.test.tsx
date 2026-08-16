@@ -99,7 +99,7 @@ describe('PlanBuilder — quadro semanal', () => {
     expect(within(card).getByText('130 kcal')).toBeInTheDocument()
   })
 
-  it('ajusta a quantidade sem deixar a gramagem zerar', async () => {
+  it('ajusta a quantidade em passos de 10 g', async () => {
     setup()
     fireEvent.click(screen.getAllByRole('button', { name: /adicionar/ })[0])
     fireEvent.click(await screen.findByRole('button', { name: /Arroz branco/ }))
@@ -107,10 +107,8 @@ describe('PlanBuilder — quadro semanal', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Aumentar Arroz branco' }))
     expect(await screen.findByText('110 g')).toBeInTheDocument()
 
-    for (let click = 0; click < 20; click += 1) {
-      fireEvent.click(screen.getByRole('button', { name: 'Diminuir Arroz branco' }))
-    }
-    expect(await screen.findByText('5 g')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Diminuir Arroz branco' }))
+    expect(await screen.findByText('100 g')).toBeInTheDocument()
   })
 
   it('esconde o assistente até ser pedido, para o quadro ficar limpo', async () => {

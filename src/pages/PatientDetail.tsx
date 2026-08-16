@@ -91,7 +91,8 @@ export default function PatientDetail({ patient, organizationId, userId, section
 
   async function addAssessment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const element = event.currentTarget
+    const form = new FormData(element)
     const result = await supabase.from('assessments').insert({
       organization_id: organizationId,
       patient_id: patient.id,
@@ -103,14 +104,15 @@ export default function PatientDetail({ patient, organizationId, userId, section
       clinical_notes: text(form, 'clinicalNotes'),
     })
     if (result.error) return setMessage(result.error.message)
-    event.currentTarget.reset()
+    element.reset()
     setMessage('Avaliação registrada.')
     await refresh()
   }
 
   async function addMeasurement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const element = event.currentTarget
+    const form = new FormData(element)
     const weight = decimal(form, 'weight')
     const height = decimal(form, 'height')
     const fat = decimal(form, 'fat')
@@ -130,14 +132,15 @@ export default function PatientDetail({ patient, organizationId, userId, section
       notes: text(form, 'notes'),
     })
     if (result.error) return setMessage(result.error.message)
-    event.currentTarget.reset()
+    element.reset()
     setMessage('Medidas registradas.')
     await refresh()
   }
 
   async function addGoal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const element = event.currentTarget
+    const form = new FormData(element)
     const result = await supabase.from('patient_goals').insert({
       organization_id: organizationId,
       patient_id: patient.id,
@@ -149,14 +152,15 @@ export default function PatientDetail({ patient, organizationId, userId, section
       created_by: userId,
     })
     if (result.error) return setMessage(result.error.message)
-    event.currentTarget.reset()
+    element.reset()
     setMessage('Meta registrada.')
     await reload()
   }
 
   async function addLab(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const element = event.currentTarget
+    const form = new FormData(element)
     const attachmentName = text(form, 'attachmentName')
     const attachmentUrl = text(form, 'attachmentUrl')
     if (Boolean(attachmentName) !== Boolean(attachmentUrl)) return setMessage('Informe nome e link do anexo juntos.')
@@ -174,14 +178,15 @@ export default function PatientDetail({ patient, organizationId, userId, section
       created_by: userId,
     })
     if (result.error) return setMessage(result.error.message)
-    event.currentTarget.reset()
+    element.reset()
     setMessage('Exame registrado.')
     await reload()
   }
 
   async function addSummary(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const element = event.currentTarget
+    const form = new FormData(element)
     const result = await supabase.from('consultation_summaries').insert({
       organization_id: organizationId,
       patient_id: patient.id,
@@ -189,7 +194,7 @@ export default function PatientDetail({ patient, organizationId, userId, section
       created_by: userId,
     })
     if (result.error) return setMessage(result.error.message)
-    event.currentTarget.reset()
+    element.reset()
     setMessage('Resumo registrado.')
     await reload()
   }
