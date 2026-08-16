@@ -8,6 +8,8 @@ Commit de código e testes: `285b500` (`feat: restore secure session navigation`
 
 Correção dos achados Important: `c0f4c3d` (`fix: harden session access navigation`).
 
+Correção da re-review: `d98fc5d` (`fix: preserve valid session access`).
+
 ## Entrega
 
 - `src/types.ts`: tipos nutricionais da base funcional restaurados e contratos de workspace, papel e acesso do paciente adicionados.
@@ -142,9 +144,39 @@ GREEN:
 - `npm test -- src/App.auth.test.tsx src/App.race.test.tsx src/App.session.test.tsx src/components/Shell.test.tsx src/pages/Login.test.tsx src/lib/guardianAccess.test.ts src/lib/sessionBootstrap.test.ts`: 7 arquivos e 28 testes passaram.
 - O pool do Vitest foi alterado de `vmThreads` para `forks` porque o pool anterior reutilizava o módulo `App` entre arquivos apesar da isolação configurada, contaminando mocks incompatíveis; os mesmos três arquivos do App passaram juntos no pool isolado.
 
+## Fix round 2: re-review dos achados Important
+
+### Acesso direto combinado com guardian negado
+
+RED: `npm test -- src/lib/sessionBootstrap.test.ts`
+
+- 1 de 11 testes falhou: um vínculo direto válido resultava no erro do guardian sem permissão para visualizar planos.
+
+GREEN: `npm test -- src/lib/sessionBootstrap.test.ts src/lib/guardianAccess.test.ts`
+
+- 2 arquivos e 13 testes passaram.
+- A negação de guardian agora possui código de domínio próprio. Erros reais de consulta continuam bloqueando; a negação esperada é adiada até combinar todos os acessos diretos e de responsável válidos.
+- Com ao menos um acesso válido, o destino segue direto ou abre seleção. Somente guardian negado continua em estado seguro de erro e não tenta claim.
+
+### Drawer ao entrar no breakpoint desktop
+
+RED: `npm test -- src/components/Shell.test.tsx`
+
+- 1 de 5 testes falhou porque `data-open` continuava `true` após a media query entrar em 1024 px.
+
+GREEN: mesmo comando.
+
+- 1 arquivo e 5 testes passaram.
+- O Shell acompanha `(min-width: 1024px)`, fecha o drawer ao entrar em desktop e, pelo mesmo estado, remove overlay, `inert`, `aria-hidden` e o trap de foco. O listener é removido no unmount.
+
+### Consolidação da rodada 2
+
+- `npm test -- src/lib/sessionBootstrap.test.ts src/lib/guardianAccess.test.ts src/components/Shell.test.tsx`: 3 arquivos e 18 testes passaram.
+- Commit de código e testes: `d98fc5d`.
+
 ## Verificação final
 
-- `npm test`: exit 0, 29 arquivos e 62 testes passaram.
+- `npm test`: exit 0, 29 arquivos e 64 testes passaram.
 - `npm run lint`: exit 0; dois warnings preexistentes de Fast Refresh permanecem em `src/lib/store.tsx`, que não está no runtime novo.
 - `npm run build`: exit 0; TypeScript e Vite concluíram, 2143 módulos foram transformados e `verify:artifact` validou `dist`.
 - `git diff --check`: exit 0.
@@ -164,6 +196,8 @@ Correções aplicadas:
 4. Ambiguidades de múltiplos consultórios e múltiplos portais agora exigem escolha explícita, sem `limit(1)`.
 5. O ciclo de sessão invalida bootstraps antigos e limpa erros após transições válidas.
 6. O drawer ganhou trap de foco/fundo inert e drawer/login respeitam movimento reduzido.
+7. A negação de guardian não bloqueia mais um acesso direto ou de responsável válido na mesma conta.
+8. O drawer móvel perde estado modal imediatamente quando o viewport entra no breakpoint desktop.
 
 Decisões mantidas:
 
