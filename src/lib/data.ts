@@ -1,6 +1,5 @@
-import type { Food, Patient, PlanTemplate, WeekPlan } from "./types";
+import type { Food, PlanTemplate, WeekPlan } from "./types";
 import { emptyWeekPlan, WEEK_DAYS } from "./types";
-import { DB_FOODS, DB_TEMPLATES, expandTemplate } from "./realdata";
 
 const SEED_FOODS: Food[] = [
   { id: "f01", name: "Ovos mexidos", group: "Proteínas", unit: "2 unidades", grams: 100, kcal: 155, protein: 13, carbs: 1, fat: 11 },
@@ -35,8 +34,7 @@ const SEED_FOODS: Food[] = [
   { id: "f30", name: "Omelete de queijo e espinafre", group: "Proteínas", unit: "1 porção (120g)", grams: 120, kcal: 190, protein: 15, carbs: 2, fat: 13 },
 ];
 
-// Catálogo completo = exemplos locais + catálogo real do Supabase
-export const FOODS: Food[] = [...SEED_FOODS, ...DB_FOODS];
+export const FOODS: Food[] = SEED_FOODS;
 
 export const FOOD_GROUPS = [...new Set(FOODS.map((f) => f.group))];
 
@@ -108,14 +106,4 @@ const LOCAL_TEMPLATES: PlanTemplate[] = [
   },
 ];
 
-// Modelos = 3 exemplos locais + 99 modelos reais do Supabase (com cardápio)
-const REAL_TEMPLATES: PlanTemplate[] = DB_TEMPLATES.filter((t) => t.hasMenu && t.dayPlan).map((t, i) => {
-  const colors = ["#4a6741", "#d9a44a", "#85591d", "#749966", "#33462d"];
-  return { ...expandTemplate(t), color: colors[i % colors.length] };
-});
-
-export const TEMPLATES: PlanTemplate[] = [...LOCAL_TEMPLATES, ...REAL_TEMPLATES];
-
-export const SEED_PATIENTS: Patient[] = [];
-
-export const SEED_PLANS: { id: string; patientId: string; name: string; templateId?: string; createdAt: string; status: "rascunho" | "publicado"; plan: WeekPlan; notes: string }[] = [];
+export const TEMPLATES: PlanTemplate[] = LOCAL_TEMPLATES;

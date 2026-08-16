@@ -3,8 +3,7 @@ import { useState } from "react";
 import { useStore } from "../lib/store";
 import { WEEK_DAYS, MEAL_TYPES, planTotals } from "../lib/types";
 import { FOODS } from "../lib/data";
-import { exportPlanPdf, exportEquivalencyPdf, exportSubstitutionMapPdf } from "../lib/pdf";
-import { DB_EQUIV } from "../lib/realdata";
+import { exportPlanPdf, exportSubstitutionMapPdf } from "../lib/pdf";
 
 export default function Portal({ patientId }: { patientId: string }) {
   const { getPatient, plans, go } = useStore();
@@ -35,7 +34,7 @@ export default function Portal({ patientId }: { patientId: string }) {
             <button className="btn-amber !py-2 text-sm" onClick={() => exportPlanPdf(plan, p, FOODS)}>
               <FileDown size={15} /> Baixar plano em PDF
             </button>
-            <button className="inline-flex items-center gap-2 rounded-xl border border-cream-100/25 px-4 py-2 text-sm font-medium text-cream-100 transition-all hover:bg-white/10" onClick={() => (DB_EQUIV.length ? exportEquivalencyPdf(p, DB_EQUIV) : exportSubstitutionMapPdf(p, FOODS))}>
+            <button className="inline-flex items-center gap-2 rounded-xl border border-cream-100/25 px-4 py-2 text-sm font-medium text-cream-100 transition-all hover:bg-white/10" onClick={() => exportSubstitutionMapPdf(p, FOODS)}>
               <FileDown size={15} /> Mapa de substituições
             </button>
           </div>

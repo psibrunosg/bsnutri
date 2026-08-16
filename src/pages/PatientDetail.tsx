@@ -4,8 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { useStore } from "../lib/store";
 import { imc, imcCategory, planTotals } from "../lib/types";
 import { FOODS } from "../lib/data";
-import { exportPlanPdf, exportEquivalencyPdf, exportSubstitutionMapPdf } from "../lib/pdf";
-import { DB_EQUIV } from "../lib/realdata";
+import { exportPlanPdf, exportSubstitutionMapPdf } from "../lib/pdf";
 
 export default function PatientDetail({ patientId }: { patientId: string }) {
   const { getPatient, plans, go, updatePatient } = useStore();
@@ -132,7 +131,7 @@ export default function PatientDetail({ patientId }: { patientId: string }) {
         <div className="card-warm p-5">
           <div className="mb-4 flex items-center justify-between">
             <p className="eyebrow">Planos alimentares</p>
-            <button className="btn-ghost !px-3 !py-1.5 text-xs" onClick={() => (DB_EQUIV.length ? exportEquivalencyPdf(p, DB_EQUIV) : exportSubstitutionMapPdf(p, FOODS))}>
+            <button className="btn-ghost !px-3 !py-1.5 text-xs" onClick={() => exportSubstitutionMapPdf(p, FOODS)}>
               <FileDown size={13} /> Mapa de substituições
             </button>
           </div>

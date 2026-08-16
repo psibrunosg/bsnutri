@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import type { Patient, PatientPlan, PlanTemplate } from "./types";
-import { SEED_PATIENTS, SEED_PLANS, TEMPLATES } from "./data";
+import { TEMPLATES } from "./data";
 
 export type View =
   | { name: "dashboard" }
@@ -27,23 +27,11 @@ interface Store {
 
 const Ctx = createContext<Store | null>(null);
 
-function load<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [view, setView] = useState<View>({ name: "dashboard" });
-  const [patients, setPatients] = useState<Patient[]>(() => load("bsnutri-patients", SEED_PATIENTS));
-  const [plans, setPlans] = useState<PatientPlan[]>(() => load("bsnutri-plans", SEED_PLANS));
-
-  useEffect(() => localStorage.setItem("bsnutri-patients", JSON.stringify(patients)), [patients]);
-  useEffect(() => localStorage.setItem("bsnutri-plans", JSON.stringify(plans)), [plans]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [plans, setPlans] = useState<PatientPlan[]>([]);
 
   const store = useMemo<Store>(
     () => ({
