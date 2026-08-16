@@ -85,6 +85,8 @@ export interface PortalState {
   assignments: PortalFormAssignment[]
   weekly: PortalWeeklySummary | null
   shoppingList: { item_key: string; description: string; total_grams: number; occurrences: number }[]
+  photos: { id: string; occurred_on: string; file_name: string; drive_web_url: string | null }[]
+  canUploadPhotos: boolean
 }
 
 const EMPTY: PortalState = {
@@ -97,6 +99,8 @@ const EMPTY: PortalState = {
   assignments: [],
   weekly: null,
   shoppingList: [],
+  photos: [],
+  canUploadPhotos: false,
 }
 
 const PLAN_SELECT =
@@ -120,7 +124,7 @@ export function usePatientPortal(patientId: string) {
   const reload = useCallback(async () => {
     setLoading(true)
     const day = today()
-    const [plan, goals, water, checkins, requests, contents, assignments, weekly, shopping] = await Promise.all([
+    const [plan, goals, water, checkins, requests, contents, assignments, weekly, shopping, photos, drive] = await Promise.all([
       supabase.from('plans').select(PLAN_SELECT).eq('patient_id', patientId).eq('status', 'published').order('published_at', { ascending: false }).limit(1),
       supabase.from('patient_goals').select('id,kind,title,target_value,target_unit').eq('patient_id', patientId).eq('active', true).order('created_at', { ascending: false }),
       supabase.from('patient_water_logs').select('amount_ml,occurred_on').eq('patient_id', patientId).eq('occurred_on', day),
@@ -130,6 +134,8 @@ export function usePatientPortal(patientId: string) {
       supabase.from('form_assignments').select('id,status,form_template_versions(title,form_fields(id,label,field_type,required,position)),form_responses(values)').eq('patient_id', patientId).order('assigned_at', { ascending: false }),
       supabase.rpc('get_patient_weekly_summary', { target_patient_id: patientId, target_days: 7 }),
       supabase.rpc('get_current_shopping_list', { target_patient_id: patientId, target_days: 7 }),
+      supabase.from('meal_checkin_photos').select('id,occurred_on,file_name,drive_web_url').eq('patient_id', patientId).order('occurred_on', { ascending: false }).limit(20),
+      supabase.rpc('get_patient_drive_status', { target_patient_id: patientId }),
     ])
 
     const collected: string[] = []
@@ -143,6 +149,8 @@ export function usePatientPortal(patientId: string) {
     push('Pré-consulta', assignments.error?.message)
     push('Resumo semanal', weekly.error?.message)
     push('Lista de compras', shopping.error?.message)
+    push('Fotos', photos.error?.message)
+    push('Drive', drive.error?.message)
 
     setState({
       plan: ((plan.data ?? []) as unknown as PortalPlan[])[0] ?? null,
@@ -154,6 +162,8 @@ export function usePatientPortal(patientId: string) {
       assignments: (assignments.data ?? []) as unknown as PortalFormAssignment[],
       weekly: (weekly.data as PortalWeeklySummary | null) ?? null,
       shoppingList: (shopping.data ?? []) as PortalState['shoppingList'],
+      photos: (photos.data ?? []) as PortalState['photos'],
+      canUploadPhotos: Boolean((drive.data as { can_upload_photos: boolean }[] | null)?.[0]?.can_upload_photos),
     })
     setErrors(collected)
     setLoading(false)

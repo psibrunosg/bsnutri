@@ -29,6 +29,12 @@ graphify-out/
 .claude-flow/
 .claude/
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Work temporaries
 work/*.tmp.sql
 work/*.patched.sql

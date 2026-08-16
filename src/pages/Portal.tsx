@@ -293,6 +293,25 @@ export default function Portal({ patient, tab, onSelectTab, onLogout }: PortalPr
               </form>
             </Card>
 
+            <Card title="Fotos do diário">
+              {!state.canUploadPhotos && (
+                <p className="text-sm text-muted-foreground">
+                  O envio de fotos depende do Google Drive conectado pelo seu profissional. Enquanto isso, registre a refeição em texto.
+                </p>
+              )}
+              {state.photos.length === 0 && state.canUploadPhotos && <p className="text-sm text-muted-foreground">Nenhuma foto enviada ainda.</p>}
+              <ul className="mt-3 space-y-2">
+                {state.photos.map((photo) => (
+                  <li key={photo.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3 text-sm">
+                    <span className="truncate">{photo.file_name}</span>
+                    {photo.drive_web_url
+                      ? <a className="shrink-0 font-medium text-forest-600 underline" href={photo.drive_web_url} target="_blank" rel="noreferrer">Abrir</a>
+                      : <span className="shrink-0 text-muted-foreground">{new Date(`${photo.occurred_on}T12:00:00`).toLocaleDateString('pt-BR')}</span>}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
             <Card title="Últimos registros">
               {state.checkins.length === 0 && <p className="text-sm text-muted-foreground">Nenhum registro ainda.</p>}
               <ul className="space-y-2">

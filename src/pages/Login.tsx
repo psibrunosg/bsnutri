@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { passwordRecoveryRedirect } from '../lib/authRedirect'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -108,13 +107,10 @@ export default function Login({ recovery = false, onRecoveryComplete }: LoginPro
       </div>
 
       <div className="flex flex-1 items-center justify-center p-8">
-        <motion.div
+        <div
           data-testid="login-panel"
           data-motion={prefersReducedMotion ? 'reduced' : 'full'}
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
-          className="w-full max-w-sm"
+          className={`w-full max-w-sm ${prefersReducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-4 duration-500'}`}
         >
           <img src="./app-icon.png" alt="BSNutri" className="mb-6 h-16 w-16 rounded-full lg:hidden" />
           <p className="eyebrow mb-2">Acesso seguro</p>
@@ -171,7 +167,7 @@ export default function Login({ recovery = false, onRecoveryComplete }: LoginPro
           )}
           {mode === 'signup' && <button type="button" className="mt-5 w-full text-sm font-medium text-forest-700" onClick={() => changeMode('login')}>Já tenho uma conta</button>}
           {mode === 'forgot' && <button type="button" className="mt-5 w-full text-sm font-medium text-forest-700" onClick={() => changeMode('login')}>Voltar para entrar</button>}
-        </motion.div>
+        </div>
       </div>
     </div>
   )

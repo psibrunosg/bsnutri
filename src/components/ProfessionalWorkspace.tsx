@@ -1,18 +1,23 @@
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
+import { LegacyImportBanner } from './LegacyImportBanner'
 import { Shell } from './Shell'
+import { readLegacyStore } from '../lib/legacyImport'
 import type { AppRoute } from '../lib/appRoute'
 import { createSupabaseCatalogDataSource } from '../lib/catalogSearch'
 import { createSupabasePatientDataSource } from '../lib/patients'
 import { createSupabasePlanTemplateDataSource } from '../lib/planTemplates'
 import { usePatientDirectory } from '../lib/usePatientDirectory'
-import Catalog from '../pages/Catalog'
 import Dashboard from '../pages/Dashboard'
-import PatientDetail from '../pages/PatientDetail'
 import Patients from '../pages/Patients'
 import PatientWizard from '../pages/PatientWizard'
-import PlanBuilder from '../pages/PlanBuilder'
-import Templates from '../pages/Templates'
 import type { WorkspaceAccess } from '../types'
+
+// Editor, ficha, catálogo e modelos entram sob demanda: o pacote inicial cobre
+// apenas autenticação, visão geral e diretório de pacientes.
+const Catalog = lazy(() => import('../pages/Catalog'))
+const PatientDetail = lazy(() => import('../pages/PatientDetail'))
+const PlanBuilder = lazy(() => import('../pages/PlanBuilder'))
+const Templates = lazy(() => import('../pages/Templates'))
 
 function ModulePending({ title }: { title: string }) {
   return (
@@ -40,6 +45,7 @@ export function ProfessionalWorkspace({ workspace, userId, route, onNavigate, on
   const templateSource = useMemo(() => createSupabasePlanTemplateDataSource(), [])
   const directory = usePatientDirectory(workspace.organizationId, dataSource)
   const canReviewTemplates = workspace.role === 'owner' || workspace.role === 'admin' || workspace.role === 'nutritionist'
+  const [legacyPreview, setLegacyPreview] = useState(() => readLegacyStore(window.localStorage))
   const selected = directory.patients.find((patient) => patient.id === route.patientId) ?? null
 
   function openPatient(patientId: string) {
@@ -139,7 +145,18 @@ export function ProfessionalWorkspace({ workspace, userId, route, onNavigate, on
 
   return (
     <Shell route={route} workspace={workspace} onNavigate={onNavigate} onLogout={onLogout}>
-      {content}
+      {legacyPreview && (
+        <LegacyImportBanner
+          preview={legacyPreview}
+          organizationId={workspace.organizationId}
+          dataSource={dataSource}
+          onImported={directory.reload}
+          onDismiss={() => setLegacyPreview(null)}
+        />
+      )}
+      <Suspense fallback={<p className="text-sm text-muted-foreground" role="status">Carregando módulo...</p>}>
+        {content}
+      </Suspense>
     </Shell>
   )
 }

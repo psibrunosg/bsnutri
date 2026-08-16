@@ -108,15 +108,59 @@ Status: **concluída**
 
 ## Task 7 — Importador legado e remoção de duplicatas
 
-Status: **parcial**
+Status: **concluída**
 
 - Removidos `src/lib/store.tsx`, `src/lib/data.ts` e `src/lib/types.ts`, além dos
   mocks do store em `Shell.test.tsx` e `Login.test.tsx`.
 - `src/App.test.tsx` deixou de testar o protótipo e passou a cobrir a recusa de
   inicialização sem configuração do Supabase.
-- Falta: importador opcional dos dados antigos do `localStorage` e varredura
-  final por módulos `export {}` e testes `expect(true)` remanescentes.
+- Removidos os módulos neutralizados `CareWorkspace`, `ClinicalDrafts`,
+  `ContentLibrary`, `NutritionWorkspace`, `PatientDetail` (raiz), `PatientPortal`,
+  `SettingsWorkspace`, `SubstitutionWorkspace` e `useFoodCatalog`, com as suítes
+  `expect(true)` correspondentes. Nenhum `expect(true)` resta no repositório.
+- `src/lib/legacyImport.ts` (+ testes) — leitura controlada de
+  `bsnutri-patients`/`bsnutri-plans`, prévia com contagem e descartes, importação
+  paciente a paciente com relatório de falhas e limpeza apenas sob confirmação.
+  Os pacientes entram marcados com a tag `prototype-v2`.
+- `src/components/LegacyImportBanner.tsx` — nada é enviado sem ação explícita.
+  Planos antigos não são importados: a estrutura do protótipo não corresponde ao
+  plano clínico versionado.
 
 ## Task 8 — Qualidade, documentação e corte
 
-Status: pendente
+Status: **concluída**
+
+- Framer Motion removido: a única transição restante (entrada do painel de login)
+  virou animação CSS que respeita `prefers-reduced-motion`. `recharts` também saiu,
+  por não ter uso no aplicativo integrado.
+- `npm audit` passou de 3 vulnerabilidades (2 altas) para zero.
+- Lazy-load de `Catalog`, `PatientDetail`, `PlanBuilder` e `Templates`; `jspdf`
+  entra por import dinâmico. Entrada caiu de 502 kB para **267 kB** e nenhum
+  fragmento passa de 500 kB.
+- `scripts/verify-build-artifact.mjs` deixou de proibir a simples menção às chaves
+  do protótipo — que o importador precisa ler — e passou a reprovar o que
+  realmente importa: `setItem` clínico no navegador.
+- Acessibilidade: `src/test/accessibility.test.tsx` roda o axe sobre login, shell,
+  diretório e cadastro. Zero violações WCAG 2 A/AA verificáveis em jsdom.
+- Playwright (`npm run test:e2e`, 7 cenários) contra o pacote construído: recusa
+  explícita sem configuração, ausência de credencial e de gravação clínica no
+  pacote, acessibilidade e zero overflow em 375, 768, 1024 e 1440 px.
+- README atualizado com os comandos e o número real de testes.
+
+## Gates ao final da execução
+
+| Gate | Resultado |
+|---|---|
+| `npm run lint` | verde |
+| `tsc -b` | verde |
+| `npm test` | 156 testes em 36 arquivos, verde |
+| `npm run build` + `verify:artifact` | verde, entrada 267 kB |
+| `npm run test:e2e` | 7 cenários, verde |
+| `npm audit` | 0 vulnerabilidades |
+
+## Pendente para o corte final
+
+- `supabase test db` das suítes novas (`patient_intake`, `plan_template_review`,
+  `plan_draft_autosave`) precisa de Docker Desktop ou do projeto remoto: não foi
+  executado nesta sessão.
+- Publicação no GitHub Pages continua represada até a aprovação.
