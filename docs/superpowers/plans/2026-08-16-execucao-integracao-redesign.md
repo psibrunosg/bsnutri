@@ -47,7 +47,26 @@ informada em ausente.
 
 ## Task 4 — Catálogo e modelos revisáveis
 
-Status: pendente
+Status: **concluída**
+
+- `supabase/migrations/20260816110000_plan_template_review_and_provenance.sql`
+  - `plan_templates.status` (`needs_review`/`approved`/`archived`), `provenance`,
+    `reviewed_by`, `reviewed_at`, `review_notes` e restrição de consistência.
+  - Backfill: todo modelo existente entra como `needs_review`, com a origem
+    (`seed`/`plan`/`manual`) preservada em `provenance`.
+  - RPC `review_plan_template` restrita a owner/admin/nutricionista.
+  - `copy_plan_template_to_patient` recriado com a guarda de aprovação: modelo não
+    aprovado é recusado com `42501` no próprio banco, não só na interface.
+- `supabase/tests/plan_template_review.test.sql` — 9 asserções, incluindo bloqueio
+  server-side na chamada direta do copiador e isolamento multi-organização.
+- `src/lib/catalogSearch.ts` (+ testes) — busca paginada em runtime, 30 por página,
+  `count: 'exact'`, escape de curingas e nutriente ausente preservado como ausente.
+- `src/lib/planTemplates.ts` (+ testes) — listagem de 24 por página **sem** carregar
+  `snapshot`, detalhe sob demanda, revisão e aplicação.
+- `src/lib/useDebouncedValue.ts` (+ testes) — uma consulta por pausa, não por tecla.
+- `src/pages/Catalog.tsx` e `src/pages/Templates.tsx` (+ testes de UI).
+- Rota e navegação `catalog` acrescentadas ao shell.
+- Restaurados de `5f2fe2c`: `nutrition.ts`, `catalog.ts` e suas suítes reais.
 
 ## Task 5 — Editor clínico e publicação imutável
 

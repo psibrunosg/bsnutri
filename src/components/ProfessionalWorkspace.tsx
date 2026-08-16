@@ -1,12 +1,16 @@
 import { useMemo } from 'react'
 import { Shell } from './Shell'
 import type { AppRoute } from '../lib/appRoute'
+import { createSupabaseCatalogDataSource } from '../lib/catalogSearch'
 import { createSupabasePatientDataSource } from '../lib/patients'
+import { createSupabasePlanTemplateDataSource } from '../lib/planTemplates'
 import { usePatientDirectory } from '../lib/usePatientDirectory'
+import Catalog from '../pages/Catalog'
 import Dashboard from '../pages/Dashboard'
 import PatientDetail from '../pages/PatientDetail'
 import Patients from '../pages/Patients'
 import PatientWizard from '../pages/PatientWizard'
+import Templates from '../pages/Templates'
 import type { WorkspaceAccess } from '../types'
 
 function ModulePending({ title }: { title: string }) {
@@ -31,7 +35,10 @@ export interface ProfessionalWorkspaceProps {
 
 export function ProfessionalWorkspace({ workspace, userId, route, onNavigate, onLogout }: ProfessionalWorkspaceProps) {
   const dataSource = useMemo(() => createSupabasePatientDataSource(), [])
+  const catalogSource = useMemo(() => createSupabaseCatalogDataSource(), [])
+  const templateSource = useMemo(() => createSupabasePlanTemplateDataSource(), [])
   const directory = usePatientDirectory(workspace.organizationId, dataSource)
+  const canReviewTemplates = workspace.role === 'owner' || workspace.role === 'admin' || workspace.role === 'nutritionist'
   const selected = directory.patients.find((patient) => patient.id === route.patientId) ?? null
 
   function openPatient(patientId: string) {
@@ -104,8 +111,18 @@ export function ProfessionalWorkspace({ workspace, userId, route, onNavigate, on
     )
   } else if (route.page === 'nutrition') {
     content = <ModulePending title="Editor de plano" />
+  } else if (route.page === 'catalog') {
+    content = <Catalog organizationId={workspace.organizationId} dataSource={catalogSource} />
   } else if (route.page === 'templates') {
-    content = <ModulePending title="Modelos de plano" />
+    content = (
+      <Templates
+        organizationId={workspace.organizationId}
+        dataSource={templateSource}
+        patients={directory.patients}
+        canReview={canReviewTemplates}
+        onPlanCreated={(planId, patientId) => openPlan(planId, patientId)}
+      />
+    )
   } else if (route.page === 'content') {
     content = <ModulePending title="Biblioteca de conteúdos" />
   }

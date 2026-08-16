@@ -2548,10 +2548,15 @@ export type Database = {
           name: string
           objective: string | null
           organization_id: string
+          provenance: Json
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           rules: Json
           scope: Database["public"]["Enums"]["plan_template_scope"]
           snapshot: Json
           source_plan_id: string | null
+          status: Database["public"]["Enums"]["plan_template_status"]
           tags: string[]
           updated_at: string
         }
@@ -2564,10 +2569,15 @@ export type Database = {
           name: string
           objective?: string | null
           organization_id: string
+          provenance?: Json
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           rules?: Json
           scope?: Database["public"]["Enums"]["plan_template_scope"]
           snapshot: Json
           source_plan_id?: string | null
+          status?: Database["public"]["Enums"]["plan_template_status"]
           tags?: string[]
           updated_at?: string
         }
@@ -2580,10 +2590,15 @@ export type Database = {
           name?: string
           objective?: string | null
           organization_id?: string
+          provenance?: Json
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           rules?: Json
           scope?: Database["public"]["Enums"]["plan_template_scope"]
           snapshot?: Json
           source_plan_id?: string | null
+          status?: Database["public"]["Enums"]["plan_template_status"]
           tags?: string[]
           updated_at?: string
         }
@@ -3121,10 +3136,15 @@ export type Database = {
           name: string
           objective: string | null
           organization_id: string
+          provenance: Json
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           rules: Json
           scope: Database["public"]["Enums"]["plan_template_scope"]
           snapshot: Json
           source_plan_id: string | null
+          status: Database["public"]["Enums"]["plan_template_status"]
           tags: string[]
           updated_at: string
         }
@@ -3152,10 +3172,15 @@ export type Database = {
           name: string
           objective: string | null
           organization_id: string
+          provenance: Json
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           rules: Json
           scope: Database["public"]["Enums"]["plan_template_scope"]
           snapshot: Json
           source_plan_id: string | null
+          status: Database["public"]["Enums"]["plan_template_status"]
           tags: string[]
           updated_at: string
         }
@@ -3280,6 +3305,40 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "clinical_drafts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      review_plan_template: {
+        Args: {
+          target_notes?: string | null
+          target_status: Database["public"]["Enums"]["plan_template_status"]
+          target_template_id: string
+        }
+        Returns: {
+          catalog_key: string | null
+          created_at: string
+          created_by: string
+          dimensions: Json
+          id: string
+          name: string
+          objective: string | null
+          organization_id: string
+          provenance: Json
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rules: Json
+          scope: Database["public"]["Enums"]["plan_template_scope"]
+          snapshot: Json
+          source_plan_id: string | null
+          status: Database["public"]["Enums"]["plan_template_status"]
+          tags: string[]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "plan_templates"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3415,6 +3474,7 @@ export type Database = {
         | "superseded"
         | "archived"
       plan_template_scope: "personal" | "organization"
+      plan_template_status: "needs_review" | "approved" | "archived"
       substitution_request_status:
         | "requested"
         | "approved"
@@ -3601,6 +3661,7 @@ export const Constants = {
         "archived",
       ],
       plan_template_scope: ["personal", "organization"],
+      plan_template_status: ["needs_review", "approved", "archived"],
       substitution_request_status: [
         "requested",
         "approved",

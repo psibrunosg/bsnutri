@@ -4,6 +4,7 @@ export type Page =
   | 'patient-new'
   | 'patient-detail'
   | 'nutrition'
+  | 'catalog'
   | 'templates'
   | 'content'
   | 'portal'
@@ -24,6 +25,7 @@ const PAGES = new Set<Page>([
   'patient-new',
   'patient-detail',
   'nutrition',
+  'catalog',
   'templates',
   'content',
   'portal',
