@@ -70,17 +70,52 @@ Status: **concluída**
 
 ## Task 5 — Editor clínico e publicação imutável
 
-Status: pendente
+Status: **concluída**
+
+- `supabase/migrations/20260816120000_plan_draft_autosave.sql` — RPC
+  `autosave_plan_version`, que grava na versão de rascunho aberta sem criar um
+  plano novo e recusa versão bloqueada ou plano publicado.
+- `supabase/tests/plan_draft_autosave.test.sql` — 7 asserções, incluindo
+  isolamento multi-organização e imutabilidade após a publicação.
+- `src/lib/usePlanDraft.ts` reescrito sobre o hook funcional de `5f2fe2c`:
+  - **Autosave saiu do `localStorage` e passou para o banco.** Nenhum dado clínico
+    permanece no navegador. O gatilho é o conteúdo, com atraso de 1,5 s.
+  - `copyActiveDayTo` devolve `needsConfirmation` quando o destino já tem
+    conteúdo; a substituição só ocorre com confirmação explícita.
+  - Catálogo deixou de ser carregado inteiro: os itens vêm da busca paginada.
+- `src/lib/pdf.ts` reescrito: `toPublishedPlanDocument` devolve `null` para
+  rascunho e versão em revisão, e só carrega substituições ativas da própria
+  versão publicada. `jspdf` entra por import dinâmico.
+- `src/pages/PlanBuilder.tsx` — três regiões (contexto, edição de um dia por vez,
+  análise e publicação), indicador de autosave e bloqueio do PDF fora da
+  versão publicada.
+- Restaurados de `5f2fe2c`: `planDrafts`, `planAssistant`, `planModels`,
+  `planRanges`, `planComparison`, `shoppingList`, `substitutionEngine`,
+  `equivalency`, `clinicalExport` e suas suítes reais.
 
 ## Task 6 — Portal real do paciente
 
-Status: pendente
+Status: **concluída**
+
+- `src/lib/usePatientPortal.ts` — plano publicado vigente, metas, água, check-ins,
+  trocas, conteúdos, pré-consulta, resumo semanal e lista de compras, com falha
+  parcial por módulo.
+- `src/pages/Portal.tsx` — abas Hoje, Meu plano, Diário, Compras, Conteúdos e
+  Pré-consulta; paciente e responsável usam o mesmo caminho, e o isolamento
+  continua sendo garantido pela sessão e pelo RLS.
+- Rascunho nunca aparece: a consulta filtra `status = 'published'` e usa a
+  versão publicada corrente.
 
 ## Task 7 — Importador legado e remoção de duplicatas
 
-Status: pendente. `src/lib/store.tsx`, `src/lib/data.ts` e `src/lib/types.ts`
-ainda existem porque `PlanBuilder`, `Templates` e `Portal` dependem deles até as
-Tasks 5 e 6.
+Status: **parcial**
+
+- Removidos `src/lib/store.tsx`, `src/lib/data.ts` e `src/lib/types.ts`, além dos
+  mocks do store em `Shell.test.tsx` e `Login.test.tsx`.
+- `src/App.test.tsx` deixou de testar o protótipo e passou a cobrir a recusa de
+  inicialização sem configuração do Supabase.
+- Falta: importador opcional dos dados antigos do `localStorage` e varredura
+  final por módulos `export {}` e testes `expect(true)` remanescentes.
 
 ## Task 8 — Qualidade, documentação e corte
 

@@ -9,6 +9,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { createSupabaseBootstrapDataSource } from './lib/supabaseBootstrapDataSource'
 import { useAppRoute } from './lib/useAppRoute'
 import Login from './pages/Login'
+import Portal from './pages/Portal'
 import type { PatientAccess, WorkspaceAccess } from './types'
 
 type Navigate = (route: AppRoute, options?: { replace?: boolean }) => void
@@ -148,11 +149,12 @@ export function SessionDestination({ access, route, userId, onNavigate, onRetry,
   }
   if (access.kind === 'patient') {
     return (
-      <StatusCard title="Portal do paciente">
-        <p className="mt-3 font-semibold text-forest-800">{access.patient.relationship === 'patient' ? access.patient.fullName : 'Acesso de responsável'}</p>
-        <p className="mt-1 text-sm text-muted-foreground">O conteúdo do seu plano será conectado na etapa do portal.</p>
-        <button type="button" className="btn-ghost mt-6" onClick={onLogout}><LogOut size={16} />Sair</button>
-      </StatusCard>
+      <Portal
+        patient={access.patient}
+        tab={route.portalTab}
+        onSelectTab={(portalTab) => onNavigate({ page: 'portal', portalTab }, { replace: true })}
+        onLogout={onLogout}
+      />
     )
   }
   return <ProfessionalWorkspace workspace={access.workspace} userId={userId} route={route} onNavigate={onNavigate} onLogout={onLogout} />

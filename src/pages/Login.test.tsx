@@ -10,7 +10,6 @@ const auth = vi.hoisted(() => ({
 }))
 
 vi.mock('../lib/supabase', () => ({ supabase: { auth }, isSupabaseConfigured: true }))
-vi.mock('../lib/store', () => ({ useStore: () => ({ setLoggedIn: vi.fn() }) }))
 
 describe('Login', () => {
   beforeEach(() => {

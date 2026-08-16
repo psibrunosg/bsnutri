@@ -2,15 +2,6 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Shell } from './Shell'
 
-vi.mock('../lib/store', () => ({
-  useStore: () => ({
-    view: { name: 'dashboard' },
-    go: vi.fn(),
-    setLoggedIn: vi.fn(),
-    patients: [],
-  }),
-}))
-
 const workspace = {
   organizationId: 'organization-1',
   organizationName: 'Clínica Aurora',

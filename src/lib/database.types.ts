@@ -3031,6 +3031,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      autosave_plan_version: {
+        Args: {
+          target_assistant_state: Json
+          target_days: Json
+          target_plan_id: string
+          target_targets: Json
+          target_version_id: string
+        }
+        Returns: string
+      }
       audit_clinical_export: {
         Args: { target_kind: string; target_patient_id: string }
         Returns: undefined
@@ -3305,6 +3315,41 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "clinical_drafts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      save_plan_draft: {
+        Args: {
+          target_assistant_state: Json
+          target_change_summary: string
+          target_created_by?: string
+          target_days: Json
+          target_organization_id: string
+          target_patient_id: string
+          target_targets: Json
+          target_title: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          current_published_version_id: string | null
+          ends_on: string | null
+          id: string
+          organization_id: string
+          patient_id: string
+          published_at: string | null
+          published_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          starts_on: string | null
+          status: Database["public"]["Enums"]["plan_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "plans"
           isOneToOne: true
           isSetofReturn: false
         }

@@ -32,6 +32,11 @@ export interface FoodPortion {
   name: string
   grams: number
   nutrientsPer100g: Nutrients
+  /**
+   * Nutrientes efetivamente informados pela fonte. Os demais entram como zero
+   * apenas para permitir a soma; a interface deve exibi-los como ausentes.
+   */
+  reportedNutrients?: NutrientKey[]
   hasReviewedSubstitution?: boolean
 }
 

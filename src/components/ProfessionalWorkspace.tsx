@@ -10,6 +10,7 @@ import Dashboard from '../pages/Dashboard'
 import PatientDetail from '../pages/PatientDetail'
 import Patients from '../pages/Patients'
 import PatientWizard from '../pages/PatientWizard'
+import PlanBuilder from '../pages/PlanBuilder'
 import Templates from '../pages/Templates'
 import type { WorkspaceAccess } from '../types'
 
@@ -110,7 +111,16 @@ export function ProfessionalWorkspace({ workspace, userId, route, onNavigate, on
       </section>
     )
   } else if (route.page === 'nutrition') {
-    content = <ModulePending title="Editor de plano" />
+    content = (
+      <PlanBuilder
+        organizationId={workspace.organizationId}
+        userId={userId}
+        patients={directory.patients}
+        catalogSource={catalogSource}
+        planId={route.planId}
+        patientId={route.patientId}
+      />
+    )
   } else if (route.page === 'catalog') {
     content = <Catalog organizationId={workspace.organizationId} dataSource={catalogSource} />
   } else if (route.page === 'templates') {
