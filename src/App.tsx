@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { AlertTriangle, LoaderCircle, LogOut } from 'lucide-react'
-import { Shell } from './components/Shell'
+import { ProfessionalWorkspace } from './components/ProfessionalWorkspace'
 import { type AppRoute } from './lib/appRoute'
 import { passwordRecoveryRedirect } from './lib/authRedirect'
 import { resolveSessionAccess, type SessionAccess } from './lib/sessionBootstrap'
@@ -92,19 +92,10 @@ function ProfessionalOnboarding({ defaultName = '', onComplete }: { defaultName?
   )
 }
 
-function IntegrationPending() {
-  return (
-    <section className="card-warm p-8">
-      <p className="eyebrow mb-2">BSNutri</p>
-      <h1 className="font-display text-3xl font-semibold">Integração em andamento</h1>
-      <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">Este módulo será conectado aos dados clínicos nas próximas etapas. Sua sessão, organização e navegação já estão protegidas.</p>
-    </section>
-  )
-}
-
 export interface SessionDestinationProps {
   access: SessionAccess
   route: AppRoute
+  userId: string
   onNavigate: Navigate
   onRetry: () => void
   onLogout: () => void
@@ -113,7 +104,7 @@ export interface SessionDestinationProps {
   defaultName?: string
 }
 
-export function SessionDestination({ access, route, onNavigate, onRetry, onLogout, onWorkspaceSelect, onPatientSelect, defaultName }: SessionDestinationProps) {
+export function SessionDestination({ access, route, userId, onNavigate, onRetry, onLogout, onWorkspaceSelect, onPatientSelect, defaultName }: SessionDestinationProps) {
   const patientPortalTab = access.kind === 'patient' ? route.portalTab : undefined
   useEffect(() => {
     if (access.kind === 'patient') onNavigate({ page: 'portal', ...(patientPortalTab ? { portalTab: patientPortalTab } : {}) }, { replace: true })
@@ -164,7 +155,7 @@ export function SessionDestination({ access, route, onNavigate, onRetry, onLogou
       </StatusCard>
     )
   }
-  return <Shell route={route} workspace={access.workspace} onNavigate={onNavigate} onLogout={onLogout}><IntegrationPending /></Shell>
+  return <ProfessionalWorkspace workspace={access.workspace} userId={userId} route={route} onNavigate={onNavigate} onLogout={onLogout} />
 }
 
 function ConfiguredApp() {
@@ -253,6 +244,7 @@ function ConfiguredApp() {
   return <SessionDestination
     access={access}
     route={route}
+    userId={session.user.id}
     onNavigate={navigate}
     onRetry={() => void loadAccess(session)}
     onLogout={() => void logout()}

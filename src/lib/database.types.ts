@@ -100,11 +100,13 @@ export type Database = {
       }
       anthropometry: {
         Row: {
+          arm_cm: number | null
           assessment_id: string | null
           body_fat_percent: number | null
           created_at: string
           created_by: string
           height_cm: number | null
+          hip_cm: number | null
           id: string
           measured_at: string
           notes: string | null
@@ -114,11 +116,13 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          arm_cm?: number | null
           assessment_id?: string | null
           body_fat_percent?: number | null
           created_at?: string
           created_by: string
           height_cm?: number | null
+          hip_cm?: number | null
           id?: string
           measured_at?: string
           notes?: string | null
@@ -128,11 +132,13 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          arm_cm?: number | null
           assessment_id?: string | null
           body_fat_percent?: number | null
           created_at?: string
           created_by?: string
           height_cm?: number | null
+          hip_cm?: number | null
           id?: string
           measured_at?: string
           notes?: string | null
@@ -1922,6 +1928,75 @@ export type Database = {
         }
         Relationships: []
       }
+      nutritional_estimates: {
+        Row: {
+          activity_factor: number
+          age_years: number
+          basal_metabolic_rate: number
+          biological_sex: string
+          calculated_on: string
+          created_at: string
+          created_by: string
+          current_weight_kg: number
+          height_cm: number
+          id: string
+          notes: string | null
+          organization_id: string
+          patient_id: string
+          protocol: string
+          total_energy_expenditure: number
+        }
+        Insert: {
+          activity_factor: number
+          age_years: number
+          basal_metabolic_rate: number
+          biological_sex: string
+          calculated_on?: string
+          created_at?: string
+          created_by: string
+          current_weight_kg: number
+          height_cm: number
+          id?: string
+          notes?: string | null
+          organization_id: string
+          patient_id: string
+          protocol: string
+          total_energy_expenditure: number
+        }
+        Update: {
+          activity_factor?: number
+          age_years?: number
+          basal_metabolic_rate?: number
+          biological_sex?: string
+          calculated_on?: string
+          created_at?: string
+          created_by?: string
+          current_weight_kg?: number
+          height_cm?: number
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          patient_id?: string
+          protocol?: string
+          total_energy_expenditure?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutritional_estimates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritional_estimates_patient_tenant_fkey"
+            columns: ["patient_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       organization_branding: {
         Row: {
           logo_url: string | null
@@ -2352,6 +2427,7 @@ export type Database = {
           phone: string | null
           professional_id: string
           status: string
+          tags: string[]
           updated_at: string
         }
         Insert: {
@@ -2367,6 +2443,7 @@ export type Database = {
           phone?: string | null
           professional_id: string
           status?: string
+          tags?: string[]
           updated_at?: string
         }
         Update: {
@@ -2382,6 +2459,7 @@ export type Database = {
           phone?: string | null
           professional_id?: string
           status?: string
+          tags?: string[]
           updated_at?: string
         }
         Relationships: [
@@ -3003,6 +3081,29 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_patient_intake: {
+        Args: {
+          allergies_input?: string | null
+          arm_cm_input?: number | null
+          birth_date_input?: string | null
+          body_fat_percent_input?: number | null
+          clinical_notes_input?: string | null
+          email_input?: string | null
+          food_preferences_input?: string | null
+          food_restrictions_input?: string | null
+          full_name_input: string
+          height_cm_input?: number | null
+          hip_cm_input?: number | null
+          measured_at_input?: string
+          objective_input?: string | null
+          phone_input?: string | null
+          tags_input?: string[]
+          target_organization_id: string
+          waist_cm_input?: number | null
+          weight_kg_input?: number | null
+        }
+        Returns: string
       }
       create_plan_template_from_plan: {
         Args: {

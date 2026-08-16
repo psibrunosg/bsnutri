@@ -9,16 +9,21 @@ const harness = vi.hoisted(() => ({
   resolveAccess: vi.fn(),
 }))
 
-vi.mock('./lib/supabase', () => ({
-  isSupabaseConfigured: true,
-  supabase: {
-    auth: {
-      getSession: harness.getSession,
-      onAuthStateChange: harness.onAuthStateChange,
-      signOut: vi.fn().mockResolvedValue({ error: null }),
+vi.mock('./lib/supabase', async () => {
+  const { queryStub } = await import('./test/supabaseStub')
+  return {
+    isSupabaseConfigured: true,
+    supabase: {
+      from: () => queryStub(),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      auth: {
+        getSession: harness.getSession,
+        onAuthStateChange: harness.onAuthStateChange,
+        signOut: vi.fn().mockResolvedValue({ error: null }),
+      },
     },
-  },
-}))
+  }
+})
 vi.mock('./lib/supabaseBootstrapDataSource', () => ({ createSupabaseBootstrapDataSource: () => ({}) }))
 vi.mock('./lib/sessionBootstrap', () => ({ resolveSessionAccess: harness.resolveAccess }))
 
