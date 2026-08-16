@@ -20,7 +20,10 @@ describe('Login', () => {
     auth.updateUser.mockReset().mockResolvedValue({ data: { user: null }, error: null })
   })
 
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
 
   it('submits email and password to Supabase and displays an authentication error', async () => {
     render(<Login />)
@@ -57,5 +60,18 @@ describe('Login', () => {
 
     expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('ana@example.com', expect.objectContaining({ redirectTo: expect.any(String) }))
     expect(await screen.findByRole('status')).toHaveTextContent('Enviamos o link de recuperação.')
+  })
+
+  it('disables the entrance animation when reduced motion is preferred', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
+      matches: true,
+      media: '(prefers-reduced-motion: reduce)',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+
+    render(<Login />)
+
+    expect(screen.getByTestId('login-panel')).toHaveAttribute('data-motion', 'reduced')
   })
 })

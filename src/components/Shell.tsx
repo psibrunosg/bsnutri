@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { BookOpen, CalendarPlus, Layers, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react'
 import type { AppRoute, Page } from '../lib/appRoute'
+import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion'
 import type { WorkspaceAccess } from '../types'
 
 const NAV: { route: AppRoute; label: string; icon: typeof LayoutDashboard; activePages: Page[] }[] = [
@@ -31,6 +32,8 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
   const [drawerOpen, setDrawerOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const drawerRef = useRef<HTMLElement>(null)
+  const prefersReducedMotion = usePrefersReducedMotion()
 
   function closeDrawer(returnFocus = false) {
     setDrawerOpen(false)
@@ -40,11 +43,26 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
   useEffect(() => {
     if (!drawerOpen) return
     closeRef.current?.focus()
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeDrawer(true)
+    const handleDrawerKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeDrawer(true)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(drawerRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])') ?? [])
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && (document.activeElement === first || !drawerRef.current?.contains(document.activeElement))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (document.activeElement === last || !drawerRef.current?.contains(document.activeElement))) {
+        event.preventDefault()
+        first.focus()
+      }
     }
-    document.addEventListener('keydown', closeOnEscape)
-    return () => document.removeEventListener('keydown', closeOnEscape)
+    document.addEventListener('keydown', handleDrawerKey)
+    return () => document.removeEventListener('keydown', handleDrawerKey)
   }, [drawerOpen])
 
   function navigate(next: AppRoute) {
@@ -67,9 +85,8 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
       </button>
 
       {drawerOpen && (
-        <button
-          type="button"
-          aria-label="Fechar navegação"
+        <div
+          aria-hidden="true"
           data-testid="drawer-overlay"
           className="fixed inset-0 z-40 bg-forest-950/55 backdrop-blur-[1px] lg:hidden"
           onClick={() => closeDrawer(true)}
@@ -77,11 +94,13 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
       )}
 
       <aside
+        ref={drawerRef}
         id="professional-navigation"
         role="navigation"
         aria-label="Navegação principal"
         data-open={drawerOpen ? 'true' : 'false'}
-        className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col bg-forest-800 text-cream-100 shadow-2xl transition-transform duration-200 lg:z-40 lg:visible lg:translate-x-0 lg:shadow-none ${drawerOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'}`}
+        data-motion={prefersReducedMotion ? 'reduced' : 'full'}
+        className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col bg-forest-800 text-cream-100 shadow-2xl ${prefersReducedMotion ? 'transition-none' : 'transition-transform duration-200'} lg:z-40 lg:visible lg:translate-x-0 lg:shadow-none ${drawerOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'}`}
       >
         <div className="flex items-center gap-3 px-5 pb-7 pt-6">
           <img src="./app-icon.png" alt="BSNutri" className="h-11 w-11 rounded-full ring-2 ring-amber-400/60" />
@@ -100,7 +119,7 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3">
+        <div className="flex-1 space-y-1 px-3">
           {NAV.map(({ route: next, label, icon: Icon, activePages }) => {
             const active = activePages.includes(route.page)
             return (
@@ -116,7 +135,7 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
               </button>
             )
           })}
-        </nav>
+        </div>
 
         <div className="space-y-1 px-3 pb-6">
           <button
@@ -134,7 +153,7 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 lg:ml-60">
+      <main className="min-w-0 flex-1 lg:ml-60" inert={drawerOpen || undefined} aria-hidden={drawerOpen || undefined}>
         <header className="border-b border-border bg-card/60 px-5 py-4 pl-16 backdrop-blur lg:px-8">
           <p className="text-xs text-muted-foreground">{workspace.organizationName}</p>
           <p className="text-sm font-semibold text-foreground">{workspace.memberName}</p>

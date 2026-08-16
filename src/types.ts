@@ -45,11 +45,20 @@ export interface WorkspaceAccess {
   role: OrganizationRole
 }
 
-export interface PatientAccess {
+export interface DirectPatientAccess {
   id: string
   fullName: string
   anonymousCode: string
   organizationId: string
   professionalId: string
-  relationship: 'patient' | 'guardian'
+  relationship: 'patient'
 }
+
+export interface GuardianPatientAccess {
+  id: string
+  organizationId: string
+  relationship: 'guardian'
+  guardianRelationship: string
+}
+
+export type PatientAccess = DirectPatientAccess | GuardianPatientAccess

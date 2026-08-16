@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { passwordRecoveryRedirect } from '../lib/authRedirect'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion'
 
 type AuthMode = 'login' | 'signup' | 'forgot' | 'recovery'
 
@@ -27,6 +28,7 @@ export default function Login({ recovery = false, onRecoveryComplete }: LoginPro
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
+  const prefersReducedMotion = usePrefersReducedMotion()
   const auth = supabase.auth as unknown as AuthClient
 
   function changeMode(next: AuthMode) {
@@ -106,7 +108,14 @@ export default function Login({ recovery = false, onRecoveryComplete }: LoginPro
       </div>
 
       <div className="flex flex-1 items-center justify-center p-8">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-sm">
+        <motion.div
+          data-testid="login-panel"
+          data-motion={prefersReducedMotion ? 'reduced' : 'full'}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
+          className="w-full max-w-sm"
+        >
           <img src="./app-icon.png" alt="BSNutri" className="mb-6 h-16 w-16 rounded-full lg:hidden" />
           <p className="eyebrow mb-2">Acesso seguro</p>
           <h2 className="font-display text-3xl font-semibold">{title}</h2>

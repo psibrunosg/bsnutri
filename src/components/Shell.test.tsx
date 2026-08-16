@@ -19,7 +19,10 @@ const workspace = {
 }
 
 describe('Shell', () => {
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
 
   it('opens and closes the responsive drawer with its accessible controls', () => {
     render(<Shell route={{ page: 'dashboard' }} workspace={workspace} onNavigate={vi.fn()} onLogout={vi.fn()}>Conteúdo</Shell>)
@@ -27,12 +30,25 @@ describe('Shell', () => {
 
     fireEvent.click(trigger)
     expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toHaveAttribute('data-open', 'true')
+    expect(screen.getAllByRole('navigation')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Fechar menu' })).toBeInTheDocument()
-    expect(screen.getByTestId('drawer-overlay')).toBeInTheDocument()
+    expect(screen.getByTestId('drawer-overlay')).not.toHaveAttribute('tabindex')
+    expect(screen.getByRole('main', { hidden: true })).toHaveAttribute('inert')
+    expect(screen.getByRole('main', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+
+    const close = screen.getByRole('button', { name: 'Fechar menu' })
+    const logout = screen.getByRole('button', { name: 'Sair' })
+    logout.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(close).toHaveFocus()
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(logout).toHaveFocus()
 
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toHaveAttribute('data-open', 'false')
     expect(trigger).toHaveFocus()
+    expect(screen.getByRole('main')).not.toHaveAttribute('inert')
+    expect(screen.getByRole('main')).not.toHaveAttribute('aria-hidden')
   })
 
   it('navigates and closes the drawer after choosing a destination', () => {
@@ -52,5 +68,19 @@ describe('Shell', () => {
     expect(screen.getAllByText('Dra. Ana').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Clínica Aurora').length).toBeGreaterThan(0)
     expect(screen.getByText('Nutricionista')).toBeInTheDocument()
+  })
+
+  it('removes the drawer transition when reduced motion is preferred', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
+      matches: true,
+      media: '(prefers-reduced-motion: reduce)',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+
+    render(<Shell route={{ page: 'dashboard' }} workspace={workspace} onNavigate={vi.fn()} onLogout={vi.fn()}>Conteúdo</Shell>)
+
+    expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toHaveAttribute('data-motion', 'reduced')
+    expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toHaveClass('transition-none')
   })
 })

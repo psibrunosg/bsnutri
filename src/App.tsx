@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { AlertTriangle, LoaderCircle, LogOut } from 'lucide-react'
 import { Shell } from './components/Shell'
@@ -9,6 +9,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { createSupabaseBootstrapDataSource } from './lib/supabaseBootstrapDataSource'
 import { useAppRoute } from './lib/useAppRoute'
 import Login from './pages/Login'
+import type { PatientAccess, WorkspaceAccess } from './types'
 
 type Navigate = (route: AppRoute, options?: { replace?: boolean }) => void
 
@@ -107,10 +108,12 @@ export interface SessionDestinationProps {
   onNavigate: Navigate
   onRetry: () => void
   onLogout: () => void
+  onWorkspaceSelect?: (workspace: WorkspaceAccess) => void
+  onPatientSelect?: (patient: PatientAccess) => void
   defaultName?: string
 }
 
-export function SessionDestination({ access, route, onNavigate, onRetry, onLogout, defaultName }: SessionDestinationProps) {
+export function SessionDestination({ access, route, onNavigate, onRetry, onLogout, onWorkspaceSelect, onPatientSelect, defaultName }: SessionDestinationProps) {
   const patientPortalTab = access.kind === 'patient' ? route.portalTab : undefined
   useEffect(() => {
     if (access.kind === 'patient') onNavigate({ page: 'portal', ...(patientPortalTab ? { portalTab: patientPortalTab } : {}) }, { replace: true })
@@ -118,6 +121,32 @@ export function SessionDestination({ access, route, onNavigate, onRetry, onLogou
 
   if (access.kind === 'error') return <ErrorScreen message={access.message} onRetry={onRetry} onLogout={onLogout} />
   if (access.kind === 'onboarding') return <ProfessionalOnboarding defaultName={defaultName} onComplete={onRetry} />
+  if (access.kind === 'workspace-selection') {
+    return (
+      <StatusCard title="Escolha o consultório">
+        <p className="mt-3 text-sm text-muted-foreground">Sua conta possui mais de um vínculo ativo. Escolha qual espaço abrir nesta sessão.</p>
+        <div className="mt-6 grid gap-3">
+          {access.workspaces.map((workspace) => (
+            <button type="button" className="btn-ghost" key={workspace.organizationId} onClick={() => onWorkspaceSelect?.(workspace)}>{workspace.organizationName}</button>
+          ))}
+        </div>
+      </StatusCard>
+    )
+  }
+  if (access.kind === 'portal-selection') {
+    return (
+      <StatusCard title="Escolha o acesso ao portal">
+        <p className="mt-3 text-sm text-muted-foreground">Há mais de um vínculo válido nesta conta. Escolha qual portal abrir nesta sessão.</p>
+        <div className="mt-6 grid gap-3">
+          {access.patients.map((patient) => (
+            <button type="button" className="btn-ghost" key={`${patient.organizationId}:${patient.id}:${patient.relationship}`} onClick={() => onPatientSelect?.(patient)}>
+              {patient.relationship === 'patient' ? patient.fullName : `Dependente · ${patient.guardianRelationship}`}
+            </button>
+          ))}
+        </div>
+      </StatusCard>
+    )
+  }
   if (access.kind === 'receptionist') {
     return (
       <StatusCard title="Módulo de recepção indisponível nesta entrega">
@@ -129,7 +158,7 @@ export function SessionDestination({ access, route, onNavigate, onRetry, onLogou
   if (access.kind === 'patient') {
     return (
       <StatusCard title="Portal do paciente">
-        <p className="mt-3 font-semibold text-forest-800">{access.patient.fullName}</p>
+        <p className="mt-3 font-semibold text-forest-800">{access.patient.relationship === 'patient' ? access.patient.fullName : 'Acesso de responsável'}</p>
         <p className="mt-1 text-sm text-muted-foreground">O conteúdo do seu plano será conectado na etapa do portal.</p>
         <button type="button" className="btn-ghost mt-6" onClick={onLogout}><LogOut size={16} />Sair</button>
       </StatusCard>
@@ -145,23 +174,33 @@ function ConfiguredApp() {
   const [loading, setLoading] = useState(true)
   const [sessionError, setSessionError] = useState('')
   const [recoveringPassword, setRecoveringPassword] = useState(() => window.location.hash.includes('type=recovery'))
+  const bootstrapGeneration = useRef(0)
+  const activeUserId = useRef<string | null>(null)
 
   const loadAccess = useCallback(async (current: Session) => {
+    const generation = ++bootstrapGeneration.current
+    activeUserId.current = current.user.id
     setLoading(true)
     setSessionError('')
     try {
-      setAccess(await resolveSessionAccess(createSupabaseBootstrapDataSource(), current.user.id))
+      const nextAccess = await resolveSessionAccess(createSupabaseBootstrapDataSource(), current.user.id)
+      if (generation !== bootstrapGeneration.current || activeUserId.current !== current.user.id) return
+      setAccess(nextAccess)
     } catch (error) {
+      if (generation !== bootstrapGeneration.current || activeUserId.current !== current.user.id) return
       setAccess({ kind: 'error', message: error instanceof Error ? error.message : 'Falha inesperada ao carregar o acesso.' })
     } finally {
-      setLoading(false)
+      if (generation === bootstrapGeneration.current && activeUserId.current === current.user.id) setLoading(false)
     }
   }, [])
 
   const initializeSession = useCallback(async () => {
+    const generation = ++bootstrapGeneration.current
+    activeUserId.current = null
     setLoading(true)
     setSessionError('')
     const result = await supabase.auth.getSession()
+    if (generation !== bootstrapGeneration.current) return
     if (result.error) {
       setSessionError(result.error.message)
       setLoading(false)
@@ -169,12 +208,18 @@ function ConfiguredApp() {
     }
     setSession(result.data.session)
     if (result.data.session && !recoveringPassword) await loadAccess(result.data.session)
-    else setLoading(false)
+    else {
+      activeUserId.current = result.data.session?.user.id ?? null
+      setLoading(false)
+    }
   }, [loadAccess, recoveringPassword])
 
   useEffect(() => {
     void initializeSession()
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      bootstrapGeneration.current += 1
+      activeUserId.current = next?.user.id ?? null
+      setSessionError('')
       setSession(next)
       if (event === 'PASSWORD_RECOVERY') {
         setRecoveringPassword(true)
@@ -205,7 +250,16 @@ function ConfiguredApp() {
   if (sessionError) return <ErrorScreen message={sessionError} onRetry={() => void initializeSession()} onLogout={() => void logout()} />
   if (!session) return <Login />
   if (!access) return <ErrorScreen message="Não foi possível determinar seu acesso." onRetry={() => void loadAccess(session)} onLogout={() => void logout()} />
-  return <SessionDestination access={access} route={route} onNavigate={navigate} onRetry={() => void loadAccess(session)} onLogout={() => void logout()} defaultName={session.user.user_metadata.full_name ?? ''} />
+  return <SessionDestination
+    access={access}
+    route={route}
+    onNavigate={navigate}
+    onRetry={() => void loadAccess(session)}
+    onLogout={() => void logout()}
+    onWorkspaceSelect={(workspace) => setAccess(workspace.role === 'receptionist' ? { kind: 'receptionist', workspace } : { kind: 'professional', workspace })}
+    onPatientSelect={(patient) => setAccess({ kind: 'patient', patient })}
+    defaultName={session.user.user_metadata.full_name ?? ''}
+  />
 }
 
 export function App() {

@@ -31,6 +31,30 @@ describe('SessionDestination', () => {
     expect(screen.getAllByRole('heading', { name: 'Integração em andamento' })).toHaveLength(1)
   })
 
+  it('offers explicit workspace selection in deterministic order', () => {
+    const selectWorkspace = vi.fn()
+    const zeta = { ...workspace, organizationId: 'organization-z', organizationName: 'Clínica Zeta', role: 'admin' as const }
+    const aurora = { ...workspace, organizationId: 'organization-a', organizationName: 'Clínica Aurora' }
+    render(<SessionDestination access={{ kind: 'workspace-selection', workspaces: [aurora, zeta] }} route={{ page: 'dashboard' }} onNavigate={vi.fn()} onRetry={vi.fn()} onLogout={vi.fn()} onWorkspaceSelect={selectWorkspace} />)
+
+    expect(screen.getByRole('heading', { name: 'Escolha o consultório' })).toBeInTheDocument()
+    const choices = screen.getAllByRole('button', { name: /Clínica/ })
+    expect(choices.map((choice) => choice.textContent)).toEqual(['Clínica Aurora', 'Clínica Zeta'])
+    fireEvent.click(choices[1])
+    expect(selectWorkspace).toHaveBeenCalledWith(zeta)
+  })
+
+  it('offers explicit portal selection for multiple valid links', () => {
+    const selectPatient = vi.fn()
+    const guardianPatient = { id: 'patient-2', organizationId: 'organization-1', relationship: 'guardian' as const, guardianRelationship: 'Mãe' }
+    render(<SessionDestination access={{ kind: 'portal-selection', patients: [patient, guardianPatient] }} route={{ page: 'portal' }} onNavigate={vi.fn()} onRetry={vi.fn()} onLogout={vi.fn()} onPatientSelect={selectPatient} />)
+
+    expect(screen.getByRole('heading', { name: 'Escolha o acesso ao portal' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pessoa vinculada' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Dependente · Mãe' }))
+    expect(selectPatient).toHaveBeenCalledWith(guardianPatient)
+  })
+
   it('keeps receptionists in a restricted destination with logout', () => {
     const logout = vi.fn()
     render(<SessionDestination access={{ kind: 'receptionist', workspace: { ...workspace, role: 'receptionist' } }} route={{ page: 'dashboard' }} onNavigate={vi.fn()} onRetry={vi.fn()} onLogout={logout} />)
