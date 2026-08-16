@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { exportPublishedPlanPdf, type PublishedPlanDocument } from './pdf'
+import { describe, expect, it } from 'vitest'
+import { buildPublishedPlanPdf, publishedPlanFileName, type PublishedPlanDocument } from './pdf'
 import { emptyNutrients } from './nutrition'
 import type { EditorDay } from './planDrafts'
 
@@ -36,20 +36,22 @@ function document(overrides: Partial<PublishedPlanDocument> = {}): PublishedPlan
 
 describe('exportPublishedPlanPdf', () => {
   it('gera o documento de um dia sem lançar erro', async () => {
-    const save = vi.fn()
-    vi.spyOn(await import('jspdf'), 'jsPDF')
-    await expect(exportPublishedPlanPdf(document())).resolves.toBeUndefined()
-    expect(save).not.toHaveBeenCalled()
+    await expect(buildPublishedPlanPdf(document())).resolves.toBeTruthy()
   })
 
   it('gera a semana inteira, que é o caso real do plano publicado', async () => {
     const days = WEEK.map((label) => day(label, 6, 4))
-    await expect(exportPublishedPlanPdf(document({ days }))).resolves.toBeUndefined()
+    await expect(buildPublishedPlanPdf(document({ days }))).resolves.toBeTruthy()
   })
 
   it('gera o documento com substituições prescritas', async () => {
-    await expect(exportPublishedPlanPdf(document({
+    await expect(buildPublishedPlanPdf(document({
       substitutions: [{ originalName: 'Aveia', options: ['Granola', 'Tapioca'] }],
-    }))).resolves.toBeUndefined()
+    }))).resolves.toBeTruthy()
+  })
+
+  it('gera nome de arquivo seguro a partir do nome do paciente', () => {
+    expect(publishedPlanFileName('Bruno de Souza Gonçalves')).toBe('plano-alimentar-bruno-de-souza-goncalves.pdf')
+    expect(publishedPlanFileName('   ')).toBe('plano-alimentar-paciente.pdf')
   })
 })

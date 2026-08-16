@@ -65,8 +65,12 @@ export function toPublishedPlanDocument(
   }
 }
 
-/** Carrega o gerador de PDF sob demanda: o bundle inicial não paga por ele. */
-export async function exportPublishedPlanPdf(document: PublishedPlanDocument): Promise<void> {
+/**
+ * Monta o documento e devolve a instância, sem gravar nada. Separado do
+ * salvamento para que o teste exercite a geração sem despejar PDF no disco.
+ * Carrega o gerador sob demanda: o pacote inicial não paga por ele.
+ */
+export async function buildPublishedPlanPdf(document: PublishedPlanDocument) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -125,5 +129,15 @@ export async function exportPublishedPlanPdf(document: PublishedPlanDocument): P
   doc.setTextColor(133, 89, 29)
   doc.text('Documento gerado pelo BSNutri · versão publicada', pageWidth / 2, 295, { align: 'center' })
 
-  doc.save(`plano-alimentar-${document.patientName.toLowerCase().replace(/\s+/g, '-')}.pdf`)
+  return doc
+}
+
+export function publishedPlanFileName(patientName: string): string {
+  const slug = patientName.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  return `plano-alimentar-${slug || 'paciente'}.pdf`
+}
+
+export async function exportPublishedPlanPdf(document: PublishedPlanDocument): Promise<void> {
+  const doc = await buildPublishedPlanPdf(document)
+  doc.save(publishedPlanFileName(document.patientName))
 }
