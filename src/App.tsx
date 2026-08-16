@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { AlertTriangle, LoaderCircle, LogOut } from 'lucide-react'
-import { Shell } from './components/Shell'
+import { ProfessionalWorkspace } from './components/ProfessionalWorkspace'
 import { type AppRoute } from './lib/appRoute'
 import { passwordRecoveryRedirect } from './lib/authRedirect'
 import { resolveSessionAccess, type SessionAccess } from './lib/sessionBootstrap'
@@ -9,6 +9,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { createSupabaseBootstrapDataSource } from './lib/supabaseBootstrapDataSource'
 import { useAppRoute } from './lib/useAppRoute'
 import Login from './pages/Login'
+import Portal from './pages/Portal'
 import type { PatientAccess, WorkspaceAccess } from './types'
 
 type Navigate = (route: AppRoute, options?: { replace?: boolean }) => void
@@ -92,19 +93,10 @@ function ProfessionalOnboarding({ defaultName = '', onComplete }: { defaultName?
   )
 }
 
-function IntegrationPending() {
-  return (
-    <section className="card-warm p-8">
-      <p className="eyebrow mb-2">BSNutri</p>
-      <h1 className="font-display text-3xl font-semibold">Integração em andamento</h1>
-      <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">Este módulo será conectado aos dados clínicos nas próximas etapas. Sua sessão, organização e navegação já estão protegidas.</p>
-    </section>
-  )
-}
-
 export interface SessionDestinationProps {
   access: SessionAccess
   route: AppRoute
+  userId: string
   onNavigate: Navigate
   onRetry: () => void
   onLogout: () => void
@@ -113,7 +105,7 @@ export interface SessionDestinationProps {
   defaultName?: string
 }
 
-export function SessionDestination({ access, route, onNavigate, onRetry, onLogout, onWorkspaceSelect, onPatientSelect, defaultName }: SessionDestinationProps) {
+export function SessionDestination({ access, route, userId, onNavigate, onRetry, onLogout, onWorkspaceSelect, onPatientSelect, defaultName }: SessionDestinationProps) {
   const patientPortalTab = access.kind === 'patient' ? route.portalTab : undefined
   useEffect(() => {
     if (access.kind === 'patient') onNavigate({ page: 'portal', ...(patientPortalTab ? { portalTab: patientPortalTab } : {}) }, { replace: true })
@@ -157,14 +149,15 @@ export function SessionDestination({ access, route, onNavigate, onRetry, onLogou
   }
   if (access.kind === 'patient') {
     return (
-      <StatusCard title="Portal do paciente">
-        <p className="mt-3 font-semibold text-forest-800">{access.patient.relationship === 'patient' ? access.patient.fullName : 'Acesso de responsável'}</p>
-        <p className="mt-1 text-sm text-muted-foreground">O conteúdo do seu plano será conectado na etapa do portal.</p>
-        <button type="button" className="btn-ghost mt-6" onClick={onLogout}><LogOut size={16} />Sair</button>
-      </StatusCard>
+      <Portal
+        patient={access.patient}
+        tab={route.portalTab}
+        onSelectTab={(portalTab) => onNavigate({ page: 'portal', portalTab }, { replace: true })}
+        onLogout={onLogout}
+      />
     )
   }
-  return <Shell route={route} workspace={access.workspace} onNavigate={onNavigate} onLogout={onLogout}><IntegrationPending /></Shell>
+  return <ProfessionalWorkspace workspace={access.workspace} userId={userId} route={route} onNavigate={onNavigate} onLogout={onLogout} />
 }
 
 function ConfiguredApp() {
@@ -253,6 +246,7 @@ function ConfiguredApp() {
   return <SessionDestination
     access={access}
     route={route}
+    userId={session.user.id}
     onNavigate={navigate}
     onRetry={() => void loadAccess(session)}
     onLogout={() => void logout()}

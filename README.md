@@ -83,6 +83,25 @@ npm test
 npm run build
 ```
 
+`npm test` cobre 156 testes em 36 arquivos, incluindo a auditoria de
+acessibilidade WCAG 2 A/AA das jornadas críticas (`src/test/accessibility.test.tsx`).
+
+As jornadas de ponta a ponta rodam contra o pacote construído:
+
+```bash
+npm run test:e2e
+```
+
+Na primeira execução em uma máquina nova, instalar o navegador:
+
+```bash
+npx playwright install chromium
+```
+
+A suíte verifica a recusa explícita sem configuração do Supabase, a ausência de
+credenciais e de gravação clínica no pacote, acessibilidade e ausência de
+overflow horizontal em 375, 768, 1024 e 1440 px.
+
 Se houver mudanca de banco ou policy, rodar tambem:
 
 ```bash

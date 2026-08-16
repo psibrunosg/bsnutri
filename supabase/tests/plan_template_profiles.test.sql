@@ -33,6 +33,9 @@ select set_config('request.jwt.claim.sub','1a000000-0000-0000-0000-000000000002'
 select is((select count(*)::integer from public.plan_templates where name='Modelo pessoal'),0,'outro profissional nao le modelo pessoal');
 
 select set_config('request.jwt.claim.sub','1a000000-0000-0000-0000-000000000001',true);
+-- Desde 20260816110000 um modelo só chega ao paciente depois de revisado.
+select public.review_plan_template((select id from public.plan_templates where name='Modelo pessoal'),'approved','Conferido para o teste');
+
 select lives_ok($$select public.apply_plan_template_to_patient((select id from public.plan_templates where name='Modelo pessoal'),'3a000000-0000-0000-0000-000000000001')$$,'aplica modelo em rascunho independente');
 
 select * from finish();

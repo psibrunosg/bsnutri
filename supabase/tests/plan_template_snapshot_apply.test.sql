@@ -40,6 +40,9 @@ insert into public.plan_templates(id,organization_id,name,objective,tags,snapsho
  '{"targets":{"energyKcal":1500},"guidance":[]}'::jsonb
 );
 
+-- Desde 20260816110000 um modelo só chega ao paciente depois de revisado.
+select public.review_plan_template('65000000-0000-0000-0000-000000000001','approved','Conferido para o teste');
+
 select lives_ok($$select public.apply_plan_template_to_patient('65000000-0000-0000-0000-000000000001','35000000-0000-0000-0000-000000000001')$$,'aplica modelo com snapshot ao paciente');
 select is((select status from public.plans where title='Modelo Snapshot 1.500 Kcal'),'draft','plano criado como rascunho para revisão');
 select is((select count(*)::integer from public.plan_days pd join public.plan_versions v on v.id=pd.plan_version_id join public.plans p on p.id=v.plan_id where p.title='Modelo Snapshot 1.500 Kcal'),1,'um dia por padrão');

@@ -36,7 +36,7 @@ describe('App auth transitions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
 
-    expect(await screen.findByRole('heading', { name: 'Bem-vinda de volta' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Que bom ter você de volta' })).toBeInTheDocument()
     expect(screen.queryByText('Falha de sessão')).not.toBeInTheDocument()
   })
 })

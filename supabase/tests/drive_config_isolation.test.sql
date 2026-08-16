@@ -36,17 +36,25 @@ insert into public.patients(id,organization_id,professional_id,anonymous_code,fu
 insert into public.plans(id,organization_id,patient_id,created_by,title,status,current_published_version_id) values
   ('46000000-0000-0000-0000-000000000001','26000000-0000-0000-0000-000000000001','36000000-0000-0000-0000-000000000001','16000000-0000-0000-0000-000000000001','Plano Drive A','draft',null),
   ('46000000-0000-0000-0000-000000000002','26000000-0000-0000-0000-000000000001','36000000-0000-0000-0000-000000000002','16000000-0000-0000-0000-000000000001','Plano Drive B','draft',null);
-insert into public.plan_versions(id,organization_id,plan_id,version_no,created_by,locked_at,published_at) values
-  ('56000000-0000-0000-0000-000000000001','26000000-0000-0000-0000-000000000001','46000000-0000-0000-0000-000000000001',1,'16000000-0000-0000-0000-000000000001',now(),now()),
-  ('56000000-0000-0000-0000-000000000002','26000000-0000-0000-0000-000000000001','46000000-0000-0000-0000-000000000002',1,'16000000-0000-0000-0000-000000000001',now(),now());
-update public.plans set status='published',current_published_version_id='56000000-0000-0000-0000-000000000001' where id='46000000-0000-0000-0000-000000000001';
-update public.plans set status='published',current_published_version_id='56000000-0000-0000-0000-000000000002' where id='46000000-0000-0000-0000-000000000002';
+-- A versão nasce destravada: `days_lock_guard` e `meals_lock_guard` recusam
+-- qualquer inserção em versão já bloqueada. O bloqueio vem depois do conteúdo.
+insert into public.plan_versions(id,organization_id,plan_id,version_no,created_by) values
+  ('56000000-0000-0000-0000-000000000001','26000000-0000-0000-0000-000000000001','46000000-0000-0000-0000-000000000001',1,'16000000-0000-0000-0000-000000000001'),
+  ('56000000-0000-0000-0000-000000000002','26000000-0000-0000-0000-000000000001','46000000-0000-0000-0000-000000000002',1,'16000000-0000-0000-0000-000000000001');
 insert into public.plan_days(id,organization_id,plan_version_id,day_index,label) values
   ('66000000-0000-0000-0000-000000000001','26000000-0000-0000-0000-000000000001','56000000-0000-0000-0000-000000000001',0,'Dia 1'),
   ('66000000-0000-0000-0000-000000000002','26000000-0000-0000-0000-000000000001','56000000-0000-0000-0000-000000000002',0,'Dia 1');
 insert into public.meals(id,organization_id,plan_day_id,position,label) values
   ('76000000-0000-0000-0000-000000000001','26000000-0000-0000-0000-000000000001','66000000-0000-0000-0000-000000000001',0,'Almoco'),
   ('76000000-0000-0000-0000-000000000002','26000000-0000-0000-0000-000000000001','66000000-0000-0000-0000-000000000002',0,'Almoco');
+-- A fixture monta o estado publicado direto. O trigger `plans_workflow_guard` exige
+-- a marca do fluxo oficial, então ela é ligada só enquanto a fixture é montada.
+select set_config('bsnutri.workflow_rpc','on',true);
+update public.plan_versions set locked_at=now(), published_at=now()
+ where id in ('56000000-0000-0000-0000-000000000001','56000000-0000-0000-0000-000000000002');
+update public.plans set status='published',current_published_version_id='56000000-0000-0000-0000-000000000001' where id='46000000-0000-0000-0000-000000000001';
+update public.plans set status='published',current_published_version_id='56000000-0000-0000-0000-000000000002' where id='46000000-0000-0000-0000-000000000002';
+select set_config('bsnutri.workflow_rpc','off',true);
 set local role authenticated;
 select set_config('request.jwt.claim.sub','16000000-0000-0000-0000-000000000003',true);
 insert into public.meal_checkins(id,organization_id,patient_id,plan_version_id,meal_id,occurred_on,state,created_by) values

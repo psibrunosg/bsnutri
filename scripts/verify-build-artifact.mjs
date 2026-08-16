@@ -4,11 +4,20 @@ import { resolve, join } from 'node:path'
 const forbiddenMarkers = [
   'SUPABASE_PROF_EMAIL',
   'SUPABASE_PROF_PASSWORD',
-  'bsnutri-patients',
-  'bsnutri-plans',
   'Dados reais sincronizados do Supabase',
   'DB_TEMPLATES',
 ]
+
+/**
+ * As chaves do protótipo podem aparecer no pacote porque o importador legado
+ * precisa lê-las e apagá-las. O que não pode existir é gravação clínica no
+ * navegador: qualquer `setItem` com essas chaves reprova o artefato.
+ */
+const legacyStorageKeys = ['bsnutri-patients', 'bsnutri-plans']
+const clinicalWritePatterns = legacyStorageKeys.flatMap((key) => [
+  new RegExp(`setItem\\(\\s*["'\`]${key}`),
+  new RegExp(`setItem\\(\\s*[A-Za-z_$][\\w$]*\\s*,[^)]*${key}`),
+])
 
 function filesIn(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -26,9 +35,12 @@ if (!statSync(artifactDirectory).isDirectory()) {
 
 const violations = filesIn(artifactDirectory).flatMap((path) => {
   const contents = readFileSync(path, 'utf8')
-  return forbiddenMarkers
-    .filter((marker) => contents.includes(marker))
-    .map((marker) => `${marker} in ${path}`)
+  return [
+    ...forbiddenMarkers.filter((marker) => contents.includes(marker)).map((marker) => `${marker} in ${path}`),
+    ...clinicalWritePatterns
+      .filter((pattern) => pattern.test(contents))
+      .map((pattern) => `gravação clínica em localStorage (${pattern}) in ${path}`),
+  ]
 })
 
 if (violations.length > 0) {

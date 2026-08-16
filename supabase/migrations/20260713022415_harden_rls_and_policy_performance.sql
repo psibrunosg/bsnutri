@@ -1,4 +1,13 @@
-revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
+-- `rls_auto_enable()` só existe em bancos criados antes desta migration; um banco
+-- novo (local ou CI) nunca chega a ter a função. O revoke incondicional quebrava
+-- toda aplicação a partir do zero.
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
+  end if;
+end;
+$$;
 
 drop policy memberships_manage_admin on public.memberships;
 create policy memberships_insert_admin_or_bootstrap on public.memberships for insert to authenticated

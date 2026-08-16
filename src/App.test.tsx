@@ -1,15 +1,16 @@
-import { describe, expect, it } from 'vitest'
-import { emptyWeekPlan, imc, planTotals } from './lib/types'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-describe('BSNutri core', () => {
-  it('cria semana vazia com 7 dias', () => {
-    const w = emptyWeekPlan()
-    expect(Object.keys(w)).toHaveLength(7)
-  })
-  it('calcula IMC', () => {
-    expect(imc(70, 175)).toBeCloseTo(22.86, 1)
-  })
-  it('soma macros da semana vazia como zero', () => {
-    expect(planTotals(emptyWeekPlan(), []).kcal).toBe(0)
+vi.mock('./lib/supabase', () => ({ isSupabaseConfigured: false, supabase: {} }))
+
+const { App } = await import('./App')
+
+describe('App', () => {
+  afterEach(() => cleanup())
+
+  it('refuses to run without Supabase configuration instead of failing silently', () => {
+    render(<App />)
+    expect(screen.getByRole('heading', { name: 'Configuração necessária' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('VITE_SUPABASE_URL')
   })
 })

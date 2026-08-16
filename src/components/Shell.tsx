@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { BookOpen, CalendarPlus, Layers, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react'
+import { Apple, BookOpen, CalendarPlus, Layers, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react'
 import type { AppRoute, Page } from '../lib/appRoute'
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion'
 import type { WorkspaceAccess } from '../types'
@@ -8,6 +8,7 @@ const NAV: { route: AppRoute; label: string; icon: typeof LayoutDashboard; activ
   { route: { page: 'dashboard' }, label: 'Visão geral', icon: LayoutDashboard, activePages: ['dashboard'] },
   { route: { page: 'patients' }, label: 'Pacientes', icon: Users, activePages: ['patients', 'patient-new', 'patient-detail'] },
   { route: { page: 'nutrition' }, label: 'Novo plano', icon: CalendarPlus, activePages: ['nutrition'] },
+  { route: { page: 'catalog' }, label: 'Catálogo', icon: Apple, activePages: ['catalog'] },
   { route: { page: 'templates' }, label: 'Modelos', icon: Layers, activePages: ['templates'] },
   { route: { page: 'content' }, label: 'Conteúdos', icon: BookOpen, activePages: ['content'] },
 ]

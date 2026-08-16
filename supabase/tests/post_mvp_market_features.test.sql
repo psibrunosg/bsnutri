@@ -55,6 +55,8 @@ insert into public.plan_days(id,organization_id,plan_version_id,day_index,label)
 insert into public.meals(id,organization_id,plan_day_id,position,label) values('58000000-0000-0000-0000-000000000001','25000000-0000-0000-0000-000000000001','57000000-0000-0000-0000-000000000001',0,'Almoco');
 insert into public.meal_items(organization_id,meal_id,position,description,quantity,unit,grams,nutrient_snapshot) values('25000000-0000-0000-0000-000000000001','58000000-0000-0000-0000-000000000001',0,'Arroz',100,'g',100,'{}');
 select lives_ok($$select public.create_plan_template_from_plan('55000000-0000-0000-0000-000000000001','Modelo hipertrofia','Ganho de massa',array['hipertrofia'])$$,'profissional salva plano como modelo');
+-- Desde 20260816110000 um modelo só chega ao paciente depois de revisado.
+select public.review_plan_template((select id from public.plan_templates limit 1),'approved','Conferido para o teste');
 select lives_ok($$select public.copy_plan_template_to_patient((select id from public.plan_templates limit 1),'35000000-0000-0000-0000-000000000001')$$,'modelo copia para novo plano do paciente');
 update public.plan_templates set name='Modelo alterado' where source_plan_id='55000000-0000-0000-0000-000000000001';
 select isnt((select title from public.plans where title='Modelo hipertrofia' limit 1),(select name from public.plan_templates limit 1),'alterar modelo nao altera plano copiado');

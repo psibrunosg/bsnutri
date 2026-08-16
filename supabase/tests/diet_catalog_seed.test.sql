@@ -4,8 +4,10 @@ create extension if not exists pgtap with schema extensions;
 select plan(6);
 
 -- 1) Alimentos do seed carregam com diet_tags corretos (correlação alimento <-> modelo).
+-- O seed traz mais de um registro de azeite de oliva (estados de preparo distintos),
+-- então a asserção precisa perguntar se algum deles acumula as duas tags.
 select ok(
-  (select diet_tags @> array['dash','vegan'] from public.foods where lower(name)='azeite de oliva' and organization_id is null),
+  (select bool_or(diet_tags @> array['dash','vegan']) from public.foods where lower(name)='azeite de oliva' and organization_id is null),
   'azeite de oliva compartilhado por multiplos modelos acumula diet_tags'
 );
 
