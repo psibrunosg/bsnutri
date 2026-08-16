@@ -455,6 +455,8 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
             setTargets={plan.setTargets}
             days={plan.days}
             disabled={readOnly}
+            suggestion={plan.suggestedTargets}
+            onApplySuggestion={plan.applySuggestedTargets}
           />
         </Modal>
       )}

@@ -10,6 +10,7 @@ import {
 } from '../lib/planAssistant'
 import { REQUIRED_ASSISTANT_STEPS as REQUIRED_STEPS, derivedStepReadiness } from '../lib/assistantReadiness'
 import type { EditorDay } from '../lib/planDrafts'
+import type { TargetSuggestion } from '../lib/planTargets'
 
 
 
@@ -40,9 +41,11 @@ export interface PlanAssistantPanelProps {
   setTargets: (update: (current: Record<string, number>) => Record<string, number>) => void
   days: EditorDay[]
   disabled: boolean
+  suggestion?: TargetSuggestion | null
+  onApplySuggestion?: () => void
 }
 
-export function PlanAssistantPanel({ assistant, setAssistant, targets, setTargets, days, disabled }: PlanAssistantPanelProps) {
+export function PlanAssistantPanel({ assistant, setAssistant, targets, setTargets, days, disabled, suggestion, onApplySuggestion }: PlanAssistantPanelProps) {
   const [micronutrient, setMicronutrient] = useState('')
   const readiness = derivedStepReadiness(assistant, targets, days)
 
@@ -117,6 +120,16 @@ export function PlanAssistantPanel({ assistant, setAssistant, targets, setTarget
 
         <fieldset>
           <legend className="label-warm">Metas do plano</legend>
+          {suggestion && (
+            <p className="mb-2 rounded-lg border border-forest-200 bg-forest-50 p-2 text-[11px] text-forest-700">
+              Calculadas a partir da estimativa energética do paciente ({suggestion.energyKcal} kcal). Revise e ajuste.
+              {onApplySuggestion && (
+                <button type="button" className="ml-1 underline underline-offset-2" disabled={disabled} onClick={onApplySuggestion}>
+                  recalcular
+                </button>
+              )}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
             {TARGET_FIELDS.map((field) => (
               <div key={field.key}>

@@ -11,6 +11,7 @@ import {
 import { comparePlanDays, comparePlanNutrition } from './planComparison'
 import { mapDraftRows, type DraftSummary, type EditorDay, type PlanRow } from './planDrafts'
 import { getRangeIssues } from './planRanges'
+import { isTargetSetEmpty, suggestTargetsForPatient, type TargetSuggestion } from './planTargets'
 import { buildShoppingList } from './shoppingList'
 import { supabase } from './supabase'
 
@@ -110,6 +111,8 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
   const [patientId, setPatientId] = useState('')
   const [title, setTitle] = useState('Plano alimentar')
   const [changeSummary, setChangeSummary] = useState('')
+  const [suggestedTargets, setSuggestedTargets] = useState<TargetSuggestion | null>(null)
+  const [suggestedObjective, setSuggestedObjective] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [autosavedAt, setAutosavedAt] = useState<string | null>(null)
@@ -141,6 +144,33 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
   }, [organizationId, onMessage])
 
   useEffect(() => { void loadDrafts() }, [loadDrafts])
+
+  // Metas nascem calculadas a partir da estimativa energética do paciente. O
+  // profissional revisa e ajusta; só não precisa digitar tudo do zero.
+  useEffect(() => {
+    if (!patientId) {
+      setSuggestedTargets(null)
+      return
+    }
+    let active = true
+    void (async () => {
+      const [estimates, assessments] = await Promise.all([
+        supabase.from('nutritional_estimates').select('total_energy_expenditure,current_weight_kg').eq('patient_id', patientId).order('calculated_on', { ascending: false }).limit(1),
+        supabase.from('assessments').select('objective').eq('patient_id', patientId).order('assessed_at', { ascending: false }).limit(1),
+      ])
+      if (!active) return
+      const estimate = (estimates.data ?? [])[0] ?? null
+      const objective = ((assessments.data ?? [])[0] as { objective: string | null } | undefined)?.objective ?? null
+      const suggestion = suggestTargetsForPatient(estimate, objective)
+      setSuggestedTargets(suggestion)
+      setSuggestedObjective(objective)
+      if (suggestion) {
+        setTargets((current) => (isTargetSetEmpty(current) ? { ...current, ...suggestion } : current))
+        setAssistant((current) => (current.objective.trim() ? current : { ...current, objective: objective ?? '' }))
+      }
+    })()
+    return () => { active = false }
+  }, [patientId])
 
   const openDraft = useCallback((draft: DraftSummary) => {
     setPatientId(draft.patientId)
@@ -331,6 +361,8 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
     autosaveState, autosavedAt,
     meals, setMeals, totals, rangeIssues, planChanges, nutritionChanges, shoppingList,
     changeSummary, setChangeSummary,
+    suggestedTargets, suggestedObjective,
+    applySuggestedTargets: () => { if (suggestedTargets) setTargets((current) => ({ ...current, ...suggestedTargets })) },
     loadDrafts, openDraft, startBlankPlan,
     addItem, removeItem, addMeal, renameDay, copyActiveDayTo,
     addItemToDay, removeItemFromDay, changeItemGrams, copyDay,
