@@ -40,9 +40,36 @@ estoura o timeout de 120 s sem explicação útil.
 
 `supabase test db` exige Docker Desktop no ar. Iniciar o Docker Desktop por
 linha de comando não sobe o daemon de forma confiável em sessão automatizada:
-esperei mais de seis minutos sem `docker info` responder. Migrations e testes
-pgTAP novos ficam escritos e revisados, mas a execução precisa de uma sessão com
-o Docker já rodando.
+uma tentativa esperou mais de seis minutos sem `docker info` responder. Quando
+isso acontecer, abrir o Docker Desktop na mão antes de pedir a execução.
+
+## Conflito de portas com outro projeto Supabase local
+
+Há outra stack Supabase nesta máquina (`gestaopessoas.github.io`) que ocupa
+54321–54327. Com ela no ar, `supabase start` do BSNutri falha com
+`Bind for 0.0.0.0:54322 failed: port is already allocated`.
+
+Não parar a stack alheia. A saída é deslocar temporariamente as portas em
+`supabase/config.toml` (54321→54421, 54322→54422, 54320→54420, 54329→54429,
+54323→54423, 54324→54424, 54327→54427), rodar os testes e reverter o arquivo com
+`git checkout -- supabase/config.toml`.
+
+## Fixtures pgTAP esbarram nos próprios guardas
+
+Três armadilhas que já custaram uma rodada inteira de depuração:
+
+1. `plans_workflow_guard` recusa `update` direto em `status`, `reviewed_at`,
+   `published_at` e `current_published_version_id`. A fixture precisa envolver
+   esses updates em `select set_config('bsnutri.workflow_rpc','on',true)` e
+   desligar em seguida.
+2. `days_lock_guard` e `meals_lock_guard` recusam inserção em versão já
+   bloqueada. Montar dias, refeições e itens **antes** de gravar `locked_at`.
+3. `throws_ok` compara a mensagem literalmente. Para padrão, usar `throws_like`
+   com `%`, nunca regex `.*`.
+
+Assertivas que contam linhas de seed (`count(*) from foods where
+organization_id is null`) envelhecem a cada migration de seed: filtrar pelo
+registro da própria fixture.
 
 ## Datas em teste dependem de fuso
 

@@ -86,17 +86,20 @@ select throws_ok(
   'profissional de outra organização não grava no rascunho alheio'
 );
 
--- publicação torna a versão imutável, inclusive para o autosave
+-- Versão publicada é imutável, inclusive para o autosave.
+-- O fluxo completo de revisão e publicação é coberto por publication_portal;
+-- aqui basta o estado final, montado direto para manter a suíte focada na guarda.
 set local role postgres;
-update public.plan_versions set reviewed_at = now(), reviewed_by = '13000000-0000-0000-0000-000000000001'
+select set_config('bsnutri.workflow_rpc', 'on', true);
+update public.plan_versions
+   set reviewed_at = now(), reviewed_by = '13000000-0000-0000-0000-000000000001',
+       locked_at = now(), published_at = now()
  where organization_id = '23000000-0000-0000-0000-000000000001';
+update public.plans set status = 'published' where organization_id = '23000000-0000-0000-0000-000000000001';
+select set_config('bsnutri.workflow_rpc', 'off', true);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '13000000-0000-0000-0000-000000000001', true);
-select public.publish_plan_version(
-  (select id from public.plans where organization_id = '23000000-0000-0000-0000-000000000001'),
-  (select id from public.plan_versions where organization_id = '23000000-0000-0000-0000-000000000001')
-);
 
 select throws_ok(
   $$select public.autosave_plan_version(

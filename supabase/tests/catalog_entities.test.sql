@@ -32,7 +32,7 @@ insert into public.foods(id,organization_id,name,preparation_state,catalog_kind,
   ('39000000-0000-0000-0000-000000000001','29000000-0000-0000-0000-000000000001','Arroz','cozido','food','19000000-0000-0000-0000-000000000001');
 insert into public.foods(id,organization_id,name,preparation_state,catalog_kind,yield_grams,serving_grams,portion_count,household_measure_label,household_measure_grams,created_by) values
   ('39000000-0000-0000-0000-000000000002','29000000-0000-0000-0000-000000000001','Arroz temperado','pronto','preparation',300,100,3,'1 concha',100,'19000000-0000-0000-0000-000000000001'),
-  ('39000000-0000-0000-0000-000000000003','29000000-0000-0000-0000-000000000001','Prato brasileiro','refeicao','combination',400,400,'19000000-0000-0000-0000-000000000001');
+  ('39000000-0000-0000-0000-000000000003','29000000-0000-0000-0000-000000000001','Prato brasileiro','refeicao','combination',400,400,1,null,null,'19000000-0000-0000-0000-000000000001');
 insert into public.food_components(parent_food_id,component_food_id,organization_id,grams,position) values
   ('39000000-0000-0000-0000-000000000002','39000000-0000-0000-0000-000000000001','29000000-0000-0000-0000-000000000001',250,0),
   ('39000000-0000-0000-0000-000000000003','39000000-0000-0000-0000-000000000002','29000000-0000-0000-0000-000000000001',300,0);
@@ -44,12 +44,14 @@ select is((select count(*)::integer from public.food_components),2,'registra com
 select is((select serving_grams::integer from public.foods where id='39000000-0000-0000-0000-000000000002'),100,'preserva rendimento e porcao');
 select is((select portion_count::integer from public.foods where id='39000000-0000-0000-0000-000000000002'),3,'preserva numero de porcoes');
 select is((select household_measure_label from public.foods where id='39000000-0000-0000-0000-000000000002'),'1 concha','preserva medida caseira explicita');
-select throws_ok(
+select throws_like(
   $$insert into public.foods(organization_id,name,preparation_state,catalog_kind,household_measure_label,created_by) values ('29000000-0000-0000-0000-000000000001','Medida incompleta','pronto','food','1 colher','19000000-0000-0000-0000-000000000001')$$,
-  '.*foods_household_measure_complete.*',
+  '%foods_household_measure_complete%',
   'rejeita medida caseira sem peso registrado'
 );
-select is((select count(*)::integer from public.foods where organization_id is null),1,'catálogo global permanece visível ao membro clínico');
+-- Os seeds de catálogo trazem centenas de alimentos globais; contar o total tornaria
+-- a asserção refém do seed. O que importa é o item global da própria fixture ser visível.
+select is((select count(*)::integer from public.foods where organization_id is null and source_food_code='global-arroz'),1,'catálogo global permanece visível ao membro clínico');
 select is((select review_status from public.foods where id='39000000-0000-0000-0000-000000000001'),'pending_review','novo item próprio inicia pendente de revisão');
 insert into public.foods(id,organization_id,name,preparation_state,catalog_kind,review_status,reviewed_by,created_by) values
   ('39000000-0000-0000-0000-000000000005','29000000-0000-0000-0000-000000000001','Item revisado','cru','food','reviewed','19000000-0000-0000-0000-000000000001','19000000-0000-0000-0000-000000000001');
@@ -59,28 +61,28 @@ select lives_ok(
   'importação válida persiste alimento e nutrientes em uma transação'
 );
 select is((select review_status from public.foods where organization_id='29000000-0000-0000-0000-000000000001' and name='Abóbora'),'pending_review','item importado aguarda revisão');
-select throws_ok(
+select throws_like(
   $$select public.import_catalog_foods('29000000-0000-0000-0000-000000000001','49000000-0000-0000-0000-000000000001','[{"name":"Arroz","preparation_state":"cozido","energy_kcal":130,"protein_g":2,"carbohydrate_g":28,"fat_g":0.3}]'::jsonb)$$,
-  '.*já existem.*',
+  '%já existem%',
   'duplicidade é rejeitada antes de persistir'
 );
-select throws_ok(
+select throws_like(
   $$select public.import_catalog_foods('29000000-0000-0000-0000-000000000001','49000000-0000-0000-0000-000000000001','[{"name":"Couve","preparation_state":"crua","energy_kcal":-1,"protein_g":2,"carbohydrate_g":3,"fat_g":0.2}]'::jsonb)$$,
-  '.*dados nutricionais inválidos.*',
+  '%dados nutricionais inválidos%',
   'dados inválidos são rejeitados antes de persistir'
 );
 select is((select count(*)::integer from public.foods where organization_id='29000000-0000-0000-0000-000000000001' and name='Couve'),0,'falha de pré-validação não deixa item parcial');
-select throws_ok(
+select throws_like(
   $$insert into public.food_components(parent_food_id,component_food_id,organization_id,grams,position) values ('39000000-0000-0000-0000-000000000002','39000000-0000-0000-0000-000000000003','29000000-0000-0000-0000-000000000001',10,1)$$,
-  '.*não podem formar ciclos.*',
+  '%não podem formar ciclos%',
   'bloqueia ciclo indireto entre preparação e combinação'
 );
 
 select set_config('request.jwt.claim.sub','19000000-0000-0000-0000-000000000002',true);
 select is((select count(*)::integer from public.food_components),0,'outra organizacao nao ve componentes');
-select throws_ok(
+select throws_like(
   $$insert into public.food_components(parent_food_id,component_food_id,organization_id,grams,position) values ('39000000-0000-0000-0000-000000000002','39000000-0000-0000-0000-000000000001','29000000-0000-0000-0000-000000000002',10,1)$$,
-  '.*row-level security.*',
+  '%não pertence ao catálogo permitido%',
   'outra organização não consegue vincular componente do catálogo alheio'
 );
 

@@ -24,7 +24,15 @@ insert into public.patient_goals(organization_id,patient_id,kind,title,target_va
 insert into public.content_library_items(id,organization_id,title,content_type,created_by) values('74000000-0000-0000-0000-000000000001','72000000-0000-0000-0000-000000000001','Fibras no café','guidance','71000000-0000-0000-0000-000000000001');
 select lives_ok($$select public.publish_content_library_version('74000000-0000-0000-0000-000000000001','Inclua uma fonte de fibra no café da manhã.')$$,'profissional publica versão de conteúdo');
 select lives_ok($$select public.deliver_content_to_patient((select id from public.content_library_versions limit 1),'73000000-0000-0000-0000-000000000001')$$,'profissional entrega cópia ao paciente');
-select throws_ok($$update public.content_library_versions set body='alterado'$$,null,null,'versão publicada é imutável');
+-- `content_library_versions` não tem policy de UPDATE: a tentativa não alcança
+-- linha alguma e o trigger de imutabilidade sequer dispara. A garantia verificada
+-- aqui é o efeito — o corpo publicado permanece intacto —, não a exceção.
+update public.content_library_versions set body='alterado';
+select is(
+  (select body from public.content_library_versions limit 1),
+  'Inclua uma fonte de fibra no café da manhã.',
+  'versão publicada é imutável'
+);
 
 select set_config('request.jwt.claim.sub','71000000-0000-0000-0000-000000000002',true);
 select is((select count(*)::integer from public.patient_goals),0,'recepção não acessa metas clínicas');

@@ -157,10 +157,41 @@ Status: **concluída**
 | `npm run build` + `verify:artifact` | verde, entrada 267 kB |
 | `npm run test:e2e` | 7 cenários, verde |
 | `npm audit` | 0 vulnerabilidades |
+| `supabase test db` | 18 suítes, 183 testes, verde |
+
+## Defeitos pré-existentes encontrados ao rodar as suítes SQL
+
+A primeira execução local de `supabase test db` desde o redesign revelou que o
+banco nunca havia sido aplicado do zero. Corrigidos nesta sessão:
+
+1. **`20260713022415`** — `revoke execute on function public.rls_auto_enable()`
+   sem guarda. A função só existe em bancos antigos, então toda aplicação a
+   partir do zero (local e CI) morria na segunda migration. Agora é condicional.
+2. **`20260816130000`** — `public.publish_plan_version` é SECURITY INVOKER e
+   chama `private.plan_assistant_has_steps`, que estava revogada de
+   `authenticated`. **Nenhuma publicação funcionava**: toda tentativa devolvia
+   "permission denied for function plan_assistant_has_steps". Sozinho, esse
+   conserto derrubou as falhas de `publication_portal` de 9 para 1.
+3. **`20260816140000`** — `20260717163138_plan_assistant_shell.sql` recriou
+   `private.validate_version_ready` sem as verificações que
+   `20260717140000_plan_quality_gates.sql` havia acrescentado vinte minutos
+   antes, revertendo em silêncio a exigência de metas obrigatórias e
+   micronutrientes prioritários. Definição completa restaurada.
+4. **`20260816150000`** — `public.import_catalog_foods` declara
+   `returns table (id uuid, name text)` e referenciava `id` e `name` sem
+   qualificação. **Toda importação de catálogo falhava** com
+   "column reference \"id\" is ambiguous".
+
+Fixtures pgTAP também estavam quebradas e foram corrigidas: lista `VALUES` com
+comprimento errado (`catalog_entities`), subconsulta com múltiplas linhas
+(`diet_catalog_seed`), inserção de dias em versão já bloqueada
+(`drive_config_isolation`), `throws_ok` usado com regex onde cabia `throws_like`
+e contagem de alimentos globais refém do seed.
+
+As suítes que aplicam modelo (`plan_template_snapshot_apply`,
+`plan_template_profiles`, `post_mvp_market_features`) passaram a aprovar o modelo
+antes de aplicá-lo, refletindo o novo contrato da Task 4.
 
 ## Pendente para o corte final
 
-- `supabase test db` das suítes novas (`patient_intake`, `plan_template_review`,
-  `plan_draft_autosave`) precisa de Docker Desktop ou do projeto remoto: não foi
-  executado nesta sessão.
 - Publicação no GitHub Pages continua represada até a aprovação.
