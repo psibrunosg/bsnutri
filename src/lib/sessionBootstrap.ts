@@ -2,6 +2,7 @@ import type { PatientAccess, WorkspaceAccess } from '../types'
 
 export interface DataError {
   message: string
+  code?: 'guardian_access_denied'
 }
 
 export interface DataResult<T> {
@@ -45,11 +46,13 @@ async function resolvePatient(source: BootstrapDataSource, userId: string): Prom
   if (directFailure) return directFailure
 
   const guardian = await source.getGuardianPatients(userId)
-  const guardianFailure = failure(guardian.error)
+  const guardianDenied = guardian.error?.code === 'guardian_access_denied'
+  const guardianFailure = guardianDenied ? null : failure(guardian.error)
   if (guardianFailure) return guardianFailure
   const patients = sortPatients([...(direct.data ?? []), ...(guardian.data ?? [])])
   if (patients.length === 1) return { kind: 'patient', patient: patients[0] }
-  return patients.length > 1 ? { kind: 'portal-selection', patients } : null
+  if (patients.length > 1) return { kind: 'portal-selection', patients }
+  return guardianDenied ? failure(guardian.error) : null
 }
 
 export async function resolveSessionAccess(source: BootstrapDataSource, userId: string): Promise<SessionAccess> {

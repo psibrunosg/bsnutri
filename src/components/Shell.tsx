@@ -41,6 +41,17 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
   }
 
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const desktop = window.matchMedia('(min-width: 1024px)')
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setDrawerOpen(false)
+    }
+    if (desktop.matches) setDrawerOpen(false)
+    desktop.addEventListener('change', closeOnDesktop)
+    return () => desktop.removeEventListener('change', closeOnDesktop)
+  }, [])
+
+  useEffect(() => {
     if (!drawerOpen) return
     closeRef.current?.focus()
     const handleDrawerKey = (event: KeyboardEvent) => {

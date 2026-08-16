@@ -91,7 +91,7 @@ export function createSupabaseBootstrapDataSource(): BootstrapDataSource {
         if (access.data) patients.push(access.data)
       }
       if (patients.length) return { data: patients, error: null }
-      return { data: null, error: { message: 'Este vínculo de responsável não permite visualizar o plano.' } }
+      return { data: null, error: { code: 'guardian_access_denied', message: 'Este vínculo de responsável não permite visualizar o plano.' } }
     },
 
     async claimPatientAccess() {

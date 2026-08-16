@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Shell } from './Shell'
 
@@ -82,5 +82,33 @@ describe('Shell', () => {
 
     expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toHaveAttribute('data-motion', 'reduced')
     expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toHaveClass('transition-none')
+  })
+
+  it('closes the mobile drawer when the viewport enters the desktop breakpoint', () => {
+    const desktopListeners: Array<(event: MediaQueryListEvent) => void> = []
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn((_event: string, listener: (event: MediaQueryListEvent) => void) => {
+        if (query === '(min-width: 1024px)') desktopListeners.push(listener)
+      }),
+      removeEventListener: vi.fn(),
+    })))
+    render(<Shell route={{ page: 'dashboard' }} workspace={workspace} onNavigate={vi.fn()} onLogout={vi.fn()}>Conteúdo</Shell>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir menu' }))
+    expect(screen.getByRole('main', { hidden: true })).toHaveAttribute('inert')
+
+    act(() => desktopListeners.forEach((listener) => listener({ matches: true } as MediaQueryListEvent)))
+
+    expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toHaveAttribute('data-open', 'false')
+    expect(screen.queryByTestId('drawer-overlay')).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).not.toHaveAttribute('inert')
+    expect(screen.getByRole('main')).not.toHaveAttribute('aria-hidden')
+
+    const logout = screen.getByRole('button', { name: 'Sair' })
+    logout.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(screen.getByRole('button', { name: 'Fechar menu' })).not.toHaveFocus()
   })
 })

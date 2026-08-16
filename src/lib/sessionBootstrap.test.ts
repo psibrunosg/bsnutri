@@ -92,11 +92,24 @@ describe('resolveSessionAccess', () => {
     const dataSource = source({
       getGuardianPatients: vi.fn().mockResolvedValue({
         data: null,
-        error: { message: 'Este vínculo de responsável não permite visualizar o plano.' },
+        error: { code: 'guardian_access_denied', message: 'Este vínculo de responsável não permite visualizar o plano.' },
       }),
     })
     const result = await resolveSessionAccess(dataSource, 'user-2')
     expect(result).toEqual({ kind: 'error', message: 'Este vínculo de responsável não permite visualizar o plano.' })
+    expect(dataSource.claimPatientAccess).not.toHaveBeenCalled()
+  })
+
+  it('preserves a valid direct patient when guardian links cannot view plans', async () => {
+    const dataSource = source({
+      getDirectPatients: vi.fn().mockResolvedValue(found([patient])),
+      getGuardianPatients: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: 'guardian_access_denied', message: 'Este vínculo de responsável não permite visualizar o plano.' },
+      }),
+    })
+
+    expect(await resolveSessionAccess(dataSource, 'user-1')).toEqual({ kind: 'patient', patient })
     expect(dataSource.claimPatientAccess).not.toHaveBeenCalled()
   })
 
