@@ -24,15 +24,25 @@ const PRESET_MICRONUTRIENTS: Record<ClinicalPreset, string[]> = {
 
 
 
+const TARGET_FIELDS = [
+  { key: 'energyKcal', label: 'Energia', unit: 'kcal' },
+  { key: 'proteinG', label: 'Proteína', unit: 'g' },
+  { key: 'carbohydrateG', label: 'Carboidrato', unit: 'g' },
+  { key: 'fatG', label: 'Gordura', unit: 'g' },
+  { key: 'fiberG', label: 'Fibra', unit: 'g' },
+  { key: 'waterMl', label: 'Água', unit: 'ml' },
+] as const
+
 export interface PlanAssistantPanelProps {
   assistant: PlanAssistantState
   setAssistant: (update: (current: PlanAssistantState) => PlanAssistantState) => void
   targets: Record<string, number>
+  setTargets: (update: (current: Record<string, number>) => Record<string, number>) => void
   days: EditorDay[]
   disabled: boolean
 }
 
-export function PlanAssistantPanel({ assistant, setAssistant, targets, days, disabled }: PlanAssistantPanelProps) {
+export function PlanAssistantPanel({ assistant, setAssistant, targets, setTargets, days, disabled }: PlanAssistantPanelProps) {
   const [micronutrient, setMicronutrient] = useState('')
   const readiness = derivedStepReadiness(assistant, targets, days)
 
@@ -104,6 +114,25 @@ export function PlanAssistantPanel({ assistant, setAssistant, targets, days, dis
             placeholder="Ex.: perda de peso com preservação de massa magra"
           />
         </div>
+
+        <fieldset>
+          <legend className="label-warm">Metas do plano</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {TARGET_FIELDS.map((field) => (
+              <div key={field.key}>
+                <label className="text-[11px] text-muted-foreground" htmlFor={`target-${field.key}`}>{field.label} ({field.unit})</label>
+                <input
+                  id={`target-${field.key}`}
+                  className="input-warm !py-1.5 !text-sm"
+                  inputMode="decimal"
+                  disabled={disabled}
+                  value={targets[field.key] ?? 0}
+                  onChange={(event) => setTargets((current) => ({ ...current, [field.key]: Number(event.target.value.replace(',', '.')) || 0 }))}
+                />
+              </div>
+            ))}
+          </div>
+        </fieldset>
 
         <fieldset>
           <legend className="label-warm">Abordagem clínica</legend>

@@ -109,6 +109,7 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
   const [confirmSubstitutionWarning, setConfirmSubstitutionWarning] = useState(false)
   const [patientId, setPatientId] = useState('')
   const [title, setTitle] = useState('Plano alimentar')
+  const [changeSummary, setChangeSummary] = useState('')
   const [busy, setBusy] = useState(false)
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [autosavedAt, setAutosavedAt] = useState<string | null>(null)
@@ -201,14 +202,34 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
     onMessage('Novo plano em branco iniciado.')
   }
 
-  function addItem(mealId: string, food: CatalogFoodSummary, grams: number) {
+  /** Aplica uma transformação às refeições de um dia específico do quadro semanal. */
+  function updateDayMeals(dayIndex: number, transform: (meals: Meal[]) => Meal[]) {
+    setDays((all) => all.map((day, index) => (index === dayIndex ? { ...day, meals: transform(day.meals) } : day)))
+  }
+
+  function addItemToDay(dayIndex: number, mealId: string, food: CatalogFoodSummary, grams: number) {
     if (!Number.isFinite(grams) || grams <= 0) return onMessage('Informe uma quantidade em gramas maior que zero.')
-    setMeals((all) => all.map((meal) => (meal.id === mealId ? { ...meal, items: [...meal.items, portionFromCatalogFood(food, grams)] } : meal)))
+    updateDayMeals(dayIndex, (meals) => meals.map((meal) => (meal.id === mealId ? { ...meal, items: [...meal.items, portionFromCatalogFood(food, grams)] } : meal)))
     onMessage('')
   }
 
+  function removeItemFromDay(dayIndex: number, mealId: string, itemId: string) {
+    updateDayMeals(dayIndex, (meals) => meals.map((meal) => (meal.id === mealId ? { ...meal, items: meal.items.filter((item) => item.id !== itemId) } : meal)))
+  }
+
+  /** Ajusta a quantidade em gramas sem nunca deixá-la chegar a zero ou negativa. */
+  function changeItemGrams(dayIndex: number, mealId: string, itemId: string, delta: number) {
+    updateDayMeals(dayIndex, (meals) => meals.map((meal) => (meal.id === mealId
+      ? { ...meal, items: meal.items.map((item) => (item.id === itemId ? { ...item, grams: Math.max(5, item.grams + delta) } : item)) }
+      : meal)))
+  }
+
+  function addItem(mealId: string, food: CatalogFoodSummary, grams: number) {
+    addItemToDay(activeDay, mealId, food, grams)
+  }
+
   function removeItem(mealId: string, itemId: string) {
-    setMeals((all) => all.map((meal) => (meal.id === mealId ? { ...meal, items: meal.items.filter((item) => item.id !== itemId) } : meal)))
+    removeItemFromDay(activeDay, mealId, itemId)
   }
 
   function addMeal(name: string) {
@@ -223,14 +244,18 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
    * Copia o dia ativo para outro dia. Quando o destino já tem conteúdo, exige
    * confirmação explícita para não apagar trabalho sem o profissional perceber.
    */
-  function copyActiveDayTo(targetIndex: number, options: { confirmed?: boolean } = {}) {
-    const source = days[activeDay]
+  function copyDay(sourceIndex: number, targetIndex: number, options: { confirmed?: boolean } = {}) {
+    const source = days[sourceIndex]
     const target = days[targetIndex]
-    if (!source || !target || targetIndex === activeDay) return { needsConfirmation: false, applied: false }
+    if (!source || !target || targetIndex === sourceIndex) return { needsConfirmation: false, applied: false }
     if (dayHasContent(target) && !options.confirmed) return { needsConfirmation: true, applied: false }
     setDays((all) => all.map((day, index) => (index === targetIndex ? { ...day, meals: source.meals.map(cloneMeal) } : day)))
-    onMessage(`Conteúdo copiado para ${target.label}.`)
+    onMessage(`Conteúdo de ${source.label} copiado para ${target.label}.`)
     return { needsConfirmation: false, applied: true }
+  }
+
+  function copyActiveDayTo(targetIndex: number, options: { confirmed?: boolean } = {}) {
+    return copyDay(activeDay, targetIndex, options)
   }
 
   async function save() {
@@ -241,7 +266,7 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
       target_organization_id: organizationId,
       target_patient_id: patientId,
       target_title: title.trim() || 'Plano alimentar',
-      target_change_summary: loadedDraft ? 'Cópia editada de rascunho' : 'Versão inicial',
+      target_change_summary: changeSummary.trim() || (loadedDraft ? 'Cópia editada de rascunho' : 'Versão inicial'),
       target_assistant_state: assistant,
       target_targets: targets,
       target_days: toPayloadDays(days),
@@ -305,8 +330,10 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
     patientId, setPatientId, title, setTitle, busy,
     autosaveState, autosavedAt,
     meals, setMeals, totals, rangeIssues, planChanges, nutritionChanges, shoppingList,
+    changeSummary, setChangeSummary,
     loadDrafts, openDraft, startBlankPlan,
     addItem, removeItem, addMeal, renameDay, copyActiveDayTo,
+    addItemToDay, removeItemFromDay, changeItemGrams, copyDay,
     save, review, publish,
   }
 }

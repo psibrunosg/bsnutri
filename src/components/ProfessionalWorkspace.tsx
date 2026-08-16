@@ -123,8 +123,10 @@ export function ProfessionalWorkspace({ workspace, userId, route, onNavigate, on
         userId={userId}
         patients={directory.patients}
         catalogSource={catalogSource}
+        templateSource={templateSource}
         planId={route.planId}
         patientId={route.patientId}
+        onBack={() => onNavigate(route.patientId ? { page: 'patient-detail', patientId: route.patientId } : { page: 'dashboard' })}
       />
     )
   } else if (route.page === 'catalog') {
