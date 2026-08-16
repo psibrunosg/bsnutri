@@ -54,7 +54,7 @@ describe('PlanAssistantPanel', () => {
   function setup(initial: PlanAssistantState, days = [dayWithItem()]) {
     let current = initial
     const setAssistant = vi.fn((update: (value: PlanAssistantState) => PlanAssistantState) => { current = update(current) })
-    const view = render(<PlanAssistantPanel assistant={current} setAssistant={setAssistant} targets={FULL_TARGETS} days={days} disabled={false} />)
+    const view = render(<PlanAssistantPanel assistant={current} setAssistant={setAssistant} targets={FULL_TARGETS} setTargets={vi.fn()} days={days} disabled={false} />)
     return { view, read: () => current }
   }
 
