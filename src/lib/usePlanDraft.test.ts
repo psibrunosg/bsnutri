@@ -110,3 +110,20 @@ describe('usePlanDraft copy day', () => {
     expect(harness.rpc).not.toHaveBeenCalledWith('autosave_plan_version', expect.anything())
   })
 })
+
+describe('changeItemGrams', () => {
+  it('nunca deixa a quantidade chegar a zero ou negativa', async () => {
+    const { result } = renderHook(() => usePlanDraft({ organizationId: 'org-1', userId: 'user-1', onMessage: vi.fn() }))
+    await waitFor(() => expect(result.current.loadingDrafts).toBe(false))
+
+    const mealId = result.current.days[0].meals[0].id
+    act(() => { result.current.addItemToDay(0, mealId, food, 20) })
+    const itemId = result.current.days[0].meals[0].items[0].id
+
+    act(() => { result.current.changeItemGrams(0, mealId, itemId, -100) })
+    expect(result.current.days[0].meals[0].items[0].grams).toBe(5)
+
+    act(() => { result.current.changeItemGrams(0, mealId, itemId, 10) })
+    expect(result.current.days[0].meals[0].items[0].grams).toBe(15)
+  })
+})

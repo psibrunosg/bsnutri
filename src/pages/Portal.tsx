@@ -63,7 +63,8 @@ export default function Portal({ patient, tab, onSelectTab, onLogout }: PortalPr
 
   async function registerCheckin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const element = event.currentTarget
+    const form = new FormData(element)
     const mealId = String(form.get('meal'))
     const meal = meals.find((item) => item.id === mealId)
     const versionId = state.plan?.plan_versions?.id
@@ -82,14 +83,15 @@ export default function Portal({ patient, tab, onSelectTab, onLogout }: PortalPr
       created_by: userId,
     }, { onConflict: 'patient_id,meal_id,occurred_on' })
     if (result.error) return setMessage(result.error.message)
-    event.currentTarget.reset()
+    element.reset()
     setMessage('Registro salvo.')
     await reload()
   }
 
   async function requestSubstitution(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const element = event.currentTarget
+    const form = new FormData(element)
     const substitutionId = String(form.get('substitution'))
     const versionId = state.plan?.plan_versions?.id
     const item = meals.flatMap((meal) => meal.meal_items).find((mealItem) => mealItem.meal_item_substitutions.some((option) => option.id === substitutionId))
@@ -107,14 +109,15 @@ export default function Portal({ patient, tab, onSelectTab, onLogout }: PortalPr
       patient_note: String(form.get('note') || '').trim() || null,
     })
     if (result.error) return setMessage(result.error.message)
-    event.currentTarget.reset()
+    element.reset()
     setMessage('Pedido enviado. Seu profissional vai revisar antes de valer.')
     await reload()
   }
 
   async function submitForm(assignmentId: string, event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const element = event.currentTarget
+    const form = new FormData(element)
     const values: Record<string, string> = {}
     for (const [key, value] of form.entries()) values[key] = String(value)
     const result = await supabase.rpc('save_form_response', { target_assignment_id: assignmentId, target_values: values, target_submit: true })
