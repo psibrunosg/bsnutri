@@ -120,3 +120,13 @@ describe('PlanBuilder — quadro semanal', () => {
     expect(await screen.findByText('Micronutrientes prioritários')).toBeInTheDocument()
   })
 })
+
+describe('PlanBuilder — PDF', () => {
+  afterEach(() => cleanup())
+
+  it('explica por que o PDF não sai em vez de ficar cinza sem motivo', async () => {
+    setup()
+    fireEvent.click(screen.getByRole('button', { name: /PDF/ }))
+    expect(await screen.findByText('Abra um plano da lista ao lado para gerar o PDF.')).toBeInTheDocument()
+  })
+})
