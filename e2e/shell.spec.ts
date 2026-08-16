@@ -18,7 +18,9 @@ test.describe('pacote publicado', () => {
     page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
 
     await page.goto('./')
-    await expect(page.getByRole('heading', { name: /Configuração necessária|Bem-vindo|Acesso seguro/ })).toBeVisible()
+    // Sem configuração o app recusa iniciar; com configuração ele para na
+    // autenticação. O que nunca pode acontecer é passar direto para dados clínicos.
+    await expect(page.getByRole('heading', { name: /Configuração necessária|de volta|Crie sua conta/ })).toBeVisible()
     expect(consoleErrors).toEqual([])
   })
 

@@ -17,7 +17,9 @@
     --secondary: 45 30% 93%;
     --secondary-foreground: 96 18% 18%;
     --muted: 45 24% 92%;
-    --muted-foreground: 60 5% 44%;
+    /* 44% de luminosidade rende 4,25:1 sobre o creme dos cartões, abaixo do
+       mínimo de 4,5:1 do WCAG AA para texto de 14px. 40% sobe para ~4,7:1. */
+    --muted-foreground: 60 5% 40%;
     --accent: 39 64% 57%;
     --accent-foreground: 96 25% 14%;
     --destructive: 8 62% 44%;

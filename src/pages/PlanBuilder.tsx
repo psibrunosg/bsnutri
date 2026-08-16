@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle2, FileDown, Lock, Plus, Save, Search, Trash2 } from 'lucide-react'
+import { PlanAssistantPanel } from '../components/PlanAssistantPanel'
 import { PageHeader } from '../components/Shell'
 import { macroKeys, macroLabels } from '../lib/catalogNutrients'
 import type { CatalogDataSource, CatalogFoodSummary } from '../lib/catalogSearch'
@@ -205,6 +206,14 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
               ))}
             </div>
           </section>
+
+          <PlanAssistantPanel
+            assistant={plan.assistant}
+            setAssistant={plan.setAssistant}
+            targets={plan.targets}
+            days={plan.days}
+            disabled={readOnly}
+          />
 
           <section className="card-warm p-5">
             <h2 className="font-display text-lg font-semibold">Planos da clínica</h2>
