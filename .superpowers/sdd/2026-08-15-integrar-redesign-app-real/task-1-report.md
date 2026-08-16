@@ -79,3 +79,29 @@ npm test -- src/lib/supabase.test.ts scripts/verify-build-artifact.test.ts
 
 - O build informa um chunk de 1,19 MB acima de 500 kB. A divisão de chunks e o lazy loading são previstos para a Task 8.
 - A substituição do store temporário pelo fluxo Supabase real permanece nas tarefas seguintes; esta tarefa só elimina sua persistência clínica e o conteúdo sincronizado do build.
+
+## Fix round 1: determinismo do ambiente e matriz de marcadores
+
+`src/lib/supabase.test.ts` não importa mais o cliente no topo. Cada teste remove as variáveis com `vi.stubEnv`, limpa os módulos com `vi.resetModules`, faz importação dinâmica e restaura ambiente e cache de módulos em `afterEach`. Assim, um `.env` local configurado não altera a verificação de configuração ausente.
+
+`scripts/verify-build-artifact.test.ts` agora usa `it.each` para os seis marcadores proibidos. Os cinco primeiros arquivos são criados na raiz do artefato e `DB_TEMPLATES` é criado em `assets/nested/catalog.js`, cobrindo a busca recursiva.
+
+### RED controlado
+
+Depois de escrever a matriz, foi aplicada somente durante a execução uma mutação controlada ao verificador: manteve-se apenas `SUPABASE_PROF_EMAIL` e a travessia de diretórios retornava uma lista vazia. O comando abaixo falhou como esperado: cinco dos sete cenários de artefato foram aceitos indevidamente, incluindo os quatro marcadores removidos e `DB_TEMPLATES` no arquivo aninhado.
+
+```text
+npm test -- scripts/verify-build-artifact.test.ts
+1 arquivo falhou; 5 testes falharam; 2 passaram
+```
+
+O primeiro ensaio de isolamento usou valores vazios e revelou que o cliente externo os trata como URL inválida. O teste foi ajustado para representar ausência real com `undefined`; não houve mudança de produção, porque o cliente já tratava variáveis ausentes com os placeholders seguros.
+
+### GREEN
+
+A lista completa de marcadores e a recursão foram restauradas antes de qualquer commit.
+
+```text
+npm test -- src/lib/supabase.test.ts scripts/verify-build-artifact.test.ts
+2 arquivos passaram, 8 testes passaram
+```
