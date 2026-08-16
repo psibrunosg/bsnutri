@@ -210,19 +210,33 @@ function ConfiguredApp() {
   useEffect(() => {
     void initializeSession()
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
-      bootstrapGeneration.current += 1
-      activeUserId.current = next?.user.id ?? null
       setSessionError('')
       setSession(next)
+
       if (event === 'PASSWORD_RECOVERY') {
+        bootstrapGeneration.current += 1
+        activeUserId.current = next?.user.id ?? null
         setRecoveringPassword(true)
         setLoading(false)
-      } else if (next) {
-        void loadAccess(next)
-      } else {
+        return
+      }
+
+      if (!next) {
+        bootstrapGeneration.current += 1
+        activeUserId.current = null
         setAccess(null)
         setLoading(false)
+        return
       }
+
+      // A renovação periódica do token dispara este callback com a mesma pessoa.
+      // Re-resolver o acesso aqui remontava a aplicação inteira e apagava o que
+      // estivesse sendo digitado. Só refaz o bootstrap quando o usuário muda.
+      if (activeUserId.current === next.user.id) return
+
+      bootstrapGeneration.current += 1
+      activeUserId.current = next.user.id
+      void loadAccess(next)
     })
     return () => data.subscription.unsubscribe()
   }, [initializeSession, loadAccess])
