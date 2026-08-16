@@ -277,6 +277,17 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
     if (created) plan.openDraft(created)
   }
 
+  /**
+   * O PDF é o documento do paciente, então só sai de versão publicada. Antes o
+   * botão apenas ficava cinza e o clique não fazia nada; agora ele explica o que
+   * falta em vez de parecer quebrado.
+   */
+  function pdfBlockReason(): string | null {
+    if (!plan.loadedDraft) return 'Abra um plano da lista ao lado para gerar o PDF.'
+    if (!openDraftSummary?.locked) return 'Este plano ainda é rascunho. Revise e publique para gerar o PDF do paciente.'
+    return null
+  }
+
   async function exportPdf(draft: DraftSummary) {
     const rows = await supabase
       .from('meal_item_substitutions')
@@ -327,7 +338,17 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
           <button type="button" className="btn-ghost" disabled={readOnly} onClick={() => setShowTemplates(true)}><Layers size={16} /> Aplicar modelo</button>
           <button type="button" className="btn-ghost" onClick={() => setShowAssistant(true)}><ClipboardList size={16} /> Assistente</button>
           <button type="button" className="btn-ghost" disabled={plan.busy || readOnly} onClick={() => void plan.save()}><Save size={16} /> Salvar rascunho</button>
-          <button type="button" className="btn-ghost" disabled={exporting || !openDraftSummary?.locked} onClick={() => openDraftSummary && void exportPdf(openDraftSummary)}>
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={exporting}
+            title={pdfBlockReason() ?? 'Gerar o PDF da versão publicada'}
+            onClick={() => {
+              const reason = pdfBlockReason()
+              if (reason) return setMessage(reason)
+              if (openDraftSummary) void exportPdf(openDraftSummary)
+            }}
+          >
             <FileDown size={16} /> {exporting ? 'Gerando...' : 'PDF'}
           </button>
           <button type="button" className="btn-ghost" disabled={plan.busy || readOnly || !plan.loadedDraft} onClick={() => void plan.review()}><Check size={16} /> Revisar</button>
