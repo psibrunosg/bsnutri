@@ -45,30 +45,42 @@ Projeto remoto atual:
 
 1. ref: `qjclholskxmtxqqentuz`
 
-Fluxo normal de migrations:
+Preparacao unica da maquina:
 
 ```bash
 supabase login
 supabase link --project-ref qjclholskxmtxqqentuz
-supabase migration list
-supabase db push --dry-run
-supabase db push
+```
+
+Fluxo normal de migrations (exige Docker Desktop no ar):
+
+```bash
+npx supabase start          # stack local
+npm run db:push -- --dry-run  # simula no remoto e no local
+npm run db:push             # aplica nos dois e regrava supabase/schema.sql
+npm run db:verify           # confere paridade remoto x local x diretorio
 ```
 
 Regras:
 
-1. usar `supabase db push --dry-run` antes de aplicar no remoto
-2. nao reescrever migrations ja aplicadas
-3. usar apenas dados sinteticos
-4. nao compartilhar access token, service role ou senha do banco
+1. toda alteracao de banco passa por migration versionada e vai para o local e
+   para o remoto; nunca so para o remoto (`docs/adr/0001-paridade-entre-banco-remoto-e-copia-local.md`)
+2. usar `npm run db:push -- --dry-run` antes de aplicar
+3. nao reescrever migrations ja aplicadas
+4. nao alterar o banco pelo painel do Supabase
+5. usar apenas dados sinteticos
+6. nao compartilhar access token, service role ou senha do banco
+
+`supabase/schema.sql` e a copia local versionada da estrutura (so DDL, sem dados).
+Regerar com `npm run db:dump`; o `db:push` ja faz isso ao final.
 
 Stack local com Docker:
 
 ```bash
-supabase start
-supabase db reset
-supabase test db
-supabase stop
+npx supabase start
+npx supabase db reset
+npx supabase test db
+npx supabase stop
 ```
 
 `supabase db reset` apaga somente o banco local.

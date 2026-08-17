@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CatalogFoodSummary } from './catalogSearch'
 import { emptyNutrients, totalDay, type Meal, type NutrientKey } from './nutrition'
 import {
-  canPublishPlan,
   completeAssistantStep,
   getPlanQualityIssues,
   initialAssistantState,
@@ -22,7 +21,7 @@ export const AUTOSAVE_DELAY_MS = 1500
 const DRAFT_SELECT =
   'id,patient_id,title,status,updated_at,' +
   'plan_versions!plan_versions_plan_id_organization_id_fkey(id,version_no,targets,assistant_state,locked_at,' +
-  'plan_days(id,label,kind,day_index,meals(id,label,position,equivalency_list_id,' +
+  'plan_days(id,label,kind,day_index,meals(id,label,position,equivalency_list_id,notes,' +
   'meal_items(id,food_id,description,grams,nutrient_snapshot,meal_item_substitutions(is_active))))))'
 
 export const cloneMeal = (meal: Meal): Meal => ({
@@ -63,6 +62,7 @@ export function toPayloadDays(days: EditorDay[]) {
       label: meal.name,
       name: meal.name,
       equivalency_list_id: meal.equivalencyListId ?? null,
+      notes: meal.notes ?? null,
       items: meal.items.map((item, itemPosition) => ({
         position: itemPosition,
         food_id: item.foodId ?? null,
@@ -331,25 +331,41 @@ export function usePlanDraft({ organizationId, userId, onMessage, autosaveDelayM
     await loadDrafts()
   }
 
+  /**
+   * Publicar em um passo: revisa e publica a versão aberta na mesma ação.
+   * A revisão continua acontecendo de verdade — grava `reviewed_at` e passa
+   * pelas validações do banco —, o profissional é que não precisa mais
+   * percorrer telas separadas para chegar até o documento do paciente.
+   */
   async function publish() {
-    if (!loadedDraft || !loadedVersion) return onMessage('Abra uma versão revisada antes de publicar.')
-    const issues = getPlanQualityIssues(assistant, targets)
-    if (issues.length) return onMessage(issues.join(' '))
-    if (!canPublishPlan(assistant, planStatus)) return onMessage('Conclua a revisão antes de publicar.')
-    const missingSubstitutions = days.some((day) => day.meals.some((meal) => !meal.equivalencyListId && meal.items.some((item) => !item.hasReviewedSubstitution)))
-    if (missingSubstitutions && !confirmSubstitutionWarning) {
-      setConfirmSubstitutionWarning(true)
-      return onMessage('Há refeições sem substituições revisadas. Clique em publicar novamente para confirmar.')
-    }
+    if (!loadedDraft || !loadedVersion) return onMessage('Salve o plano antes de publicar.')
+    if (locked) return onMessage('Esta versão já está publicada.')
+
     setBusy(true)
+    const nextAssistant = completeAssistantStep(assistant, 'review')
+
+    if (planStatus !== 'reviewed') {
+      const review = await supabase.rpc('review_plan_version', {
+        target_plan_id: loadedDraft,
+        target_version_id: loadedVersion,
+        target_targets: targets,
+        target_assistant_state: nextAssistant,
+      })
+      if (review.error) {
+        setBusy(false)
+        return onMessage(`Não foi possível publicar: ${review.error.message}`)
+      }
+      setAssistant(nextAssistant)
+    }
+
     const result = await supabase.rpc('publish_plan_version', { target_plan_id: loadedDraft, target_version_id: loadedVersion })
     setBusy(false)
     if (result.error) return onMessage(`Não foi possível publicar: ${result.error.message}`)
     setPlanStatus('published')
     setLocked(true)
     setConfirmSubstitutionWarning(false)
-    setAssistant(completeAssistantStep(assistant, 'publish'))
-    onMessage('Plano publicado e bloqueado para edição.')
+    setAssistant(completeAssistantStep(nextAssistant, 'publish'))
+    onMessage('Plano publicado. O PDF do paciente já pode ser gerado.')
     await loadDrafts()
   }
 

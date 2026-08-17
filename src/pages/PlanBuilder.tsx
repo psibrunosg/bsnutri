@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Check, ClipboardList, FileDown, Layers, Lock, Plus, Save, Search, Trash2, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, ClipboardList, FileDown, FileUp, Layers, Lock, Plus, Repeat2, Save, Search, Trash2, X } from 'lucide-react'
+import { DietboxImportModal } from '../components/DietboxImportModal'
 import { PlanAssistantPanel } from '../components/PlanAssistantPanel'
 import { CATALOG_PAGE_SIZE, type CatalogDataSource, type CatalogFoodSummary } from '../lib/catalogSearch'
+import { createSupabaseDietboxImportDataSource } from '../lib/dietboxImportWrite'
 import { totalDay } from '../lib/nutrition'
 import type { PatientSummary } from '../lib/patients'
 import { exportPublishedPlanPdf, toPublishedPlanDocument } from '../lib/pdf'
@@ -12,6 +14,7 @@ import {
   type PlanTemplateDataSource,
   type PlanTemplateSummary,
 } from '../lib/planTemplates'
+import { createSupabaseSubstitutionDataSource, groupByMealItem, isPersistedMealItem, type PrescribedSubstitutionRow } from '../lib/substitutions'
 import { supabase } from '../lib/supabase'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 import { usePlanDraft } from '../lib/usePlanDraft'
@@ -240,6 +243,11 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
   const [showAssistant, setShowAssistant] = useState(false)
   const [pendingCopy, setPendingCopy] = useState<{ from: number; to: number } | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [substitutions, setSubstitutions] = useState<PrescribedSubstitutionRow[]>([])
+  const [substitutionFor, setSubstitutionFor] = useState<{ itemId: string; itemName: string } | null>(null)
+  const [showDietboxImport, setShowDietboxImport] = useState(false)
+  const substitutionSource = useMemo(() => createSupabaseSubstitutionDataSource(), [])
+  const dietboxWriteSource = useMemo(() => createSupabaseDietboxImportDataSource(), [])
   const plan = usePlanDraft({ organizationId, userId, onMessage: setMessage })
   const { openDraft, drafts, setPatientId } = plan
 
@@ -252,6 +260,49 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
   useEffect(() => {
     if (patientId && !plan.patientId) setPatientId(patientId)
   }, [patientId, plan.patientId, setPatientId])
+
+  const loadSubstitutions = useCallback(async () => {
+    if (!plan.loadedVersion) {
+      setSubstitutions([])
+      return
+    }
+    const response = await substitutionSource.listForVersion(plan.loadedVersion)
+    if (!response.error) setSubstitutions(response.data)
+  }, [substitutionSource, plan.loadedVersion])
+
+  useEffect(() => { void loadSubstitutions() }, [loadSubstitutions])
+
+  const substitutionsByItem = useMemo(() => groupByMealItem(substitutions), [substitutions])
+
+  async function prescribeSubstitution(food: CatalogFoodSummary, grams: number) {
+    if (!substitutionFor || !plan.loadedVersion) return
+    const response = await substitutionSource.prescribe({
+      organizationId,
+      planVersionId: plan.loadedVersion,
+      mealItemId: substitutionFor.itemId,
+      food,
+      grams,
+      note: null,
+      userId,
+    })
+    setSubstitutionFor(null)
+    if (response.error) return setMessage(response.error.message)
+    setMessage(`Substituição prescrita para ${substitutionFor.itemName}.`)
+    await loadSubstitutions()
+  }
+
+  async function removeSubstitution(id: string) {
+    const response = await substitutionSource.setActive(id, false)
+    if (response.error) return setMessage(response.error.message)
+    await loadSubstitutions()
+  }
+
+  function openSubstitution(itemId: string, itemName: string) {
+    if (!plan.loadedVersion || !isPersistedMealItem(itemId)) {
+      return setMessage('Salve o plano antes de prescrever substituições para os itens.')
+    }
+    setSubstitutionFor({ itemId, itemName })
+  }
 
   const readOnly = plan.locked
   const patient = patients.find((item) => item.id === plan.patientId) ?? null
@@ -336,6 +387,7 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
 
         <div className="flex flex-wrap gap-2.5">
           <button type="button" className="btn-ghost" disabled={readOnly} onClick={() => setShowTemplates(true)}><Layers size={16} /> Aplicar modelo</button>
+          <button type="button" className="btn-ghost" disabled={readOnly} onClick={() => setShowDietboxImport(true)}><FileUp size={16} /> Importar do Dietbox</button>
           <button type="button" className="btn-ghost" onClick={() => setShowAssistant(true)}><ClipboardList size={16} /> Assistente</button>
           <button type="button" className="btn-ghost" disabled={plan.busy || readOnly} onClick={() => void plan.save()}><Save size={16} /> Salvar rascunho</button>
           <button
@@ -351,9 +403,8 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
           >
             <FileDown size={16} /> {exporting ? 'Gerando...' : 'PDF'}
           </button>
-          <button type="button" className="btn-ghost" disabled={plan.busy || readOnly || !plan.loadedDraft} onClick={() => void plan.review()}><Check size={16} /> Revisar</button>
-          <button type="button" className="btn-amber" disabled={plan.busy || readOnly || plan.planStatus !== 'reviewed'} onClick={() => void plan.publish()}>
-            <Lock size={16} /> {plan.confirmSubstitutionWarning ? 'Confirmar' : 'Publicar'}
+          <button type="button" className="btn-amber" disabled={plan.busy || readOnly || !plan.loadedDraft} onClick={() => void plan.publish()}>
+            <Lock size={16} /> {plan.busy ? 'Publicando...' : 'Publicar plano'}
           </button>
         </div>
       </div>
@@ -424,6 +475,7 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
               {day.meals.map((meal) => (
                 <div key={meal.id}>
                   <p className="mb-1 font-mono text-[10px] font-medium uppercase tracking-wider text-amber-700">{meal.name}</p>
+                  {meal.notes && <p className="mb-1.5 text-[10.5px] italic text-muted-foreground">{meal.notes}</p>}
                   <div className="space-y-1.5">
                     {meal.items.map((item) => (
                       <div key={item.id} className="group rounded-lg bg-cream-100 px-2.5 py-2">
@@ -444,6 +496,27 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
                           )}
                           {readOnly && <span className="font-mono text-[11px] text-muted-foreground">{item.grams} g</span>}
                         </div>
+
+                        {(substitutionsByItem.get(item.id) ?? []).filter((option) => option.is_active).map((option) => (
+                          <div key={option.id} className="mt-1 flex items-center justify-between gap-1 rounded bg-white/70 px-1.5 py-1">
+                            <span className="min-w-0 truncate text-[10.5px] text-muted-foreground">↺ {option.description} · {option.grams} g</span>
+                            {!readOnly && (
+                              <button type="button" aria-label={`Remover substituição ${option.description}`} className="shrink-0 text-muted-foreground/60 hover:text-destructive" onClick={() => void removeSubstitution(option.id)}>
+                                <X size={10} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            className="mt-1 flex w-full items-center justify-center gap-1 rounded text-[10px] font-medium text-muted-foreground hover:text-forest-600"
+                            onClick={() => openSubstitution(item.id, item.name)}
+                          >
+                            <Repeat2 size={10} /> substituição
+                          </button>
+                        )}
                       </div>
                     ))}
                     {!readOnly && (
@@ -471,6 +544,43 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
           mealName={picker.mealName}
           onClose={() => setPicker(null)}
           onPick={(food, grams) => { plan.addItemToDay(picker.dayIndex, picker.mealId, food, grams); setPicker(null) }}
+        />
+      )}
+
+      {substitutionFor && (
+        <FoodPickerModal
+          organizationId={organizationId}
+          dataSource={catalogSource}
+          dayLabel="Substituição prescrita"
+          mealName={substitutionFor.itemName}
+          onClose={() => setSubstitutionFor(null)}
+          onPick={(food, grams) => void prescribeSubstitution(food, grams)}
+        />
+      )}
+
+      {showDietboxImport && (
+        <DietboxImportModal
+          organizationId={organizationId}
+          userId={userId}
+          catalogSource={catalogSource}
+          writeSource={dietboxWriteSource}
+          substitutionSource={substitutionSource}
+          patientId={plan.patientId}
+          title={plan.title}
+          targets={plan.targets}
+          assistantState={plan.assistant}
+          days={plan.days}
+          activeDayIndex={plan.activeDay}
+          loadDrafts={plan.loadDrafts}
+          onClose={() => setShowDietboxImport(false)}
+          onImported={(draftId) => {
+            setShowDietboxImport(false)
+            void (async () => {
+              const next = await plan.loadDrafts()
+              const created = next.find((draft) => draft.id === draftId)
+              if (created) plan.openDraft(created)
+            })()
+          }}
         />
       )}
 

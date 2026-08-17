@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(10);
 
 set local role postgres;
 
@@ -39,8 +39,21 @@ select public.save_plan_draft(
   'Versão inicial',
   '{}'::jsonb,
   '{"energyKcal":2000}'::jsonb,
-  '[{"day_index":0,"label":"Dia 1","kind":"standard","meals":[{"position":0,"label":"Café da manhã","items":[{"position":0,"description":"Aveia","grams":30,"nutrient_snapshot":{}}]}]}]'::jsonb
+  '[{"day_index":0,"label":"Dia 1","kind":"standard","meals":[{"position":0,"label":"Café da manhã","notes":"Nota importada do Dietbox","items":[{"position":0,"description":"Aveia","grams":30,"nutrient_snapshot":{}}]}]}]'::jsonb
 );
+
+select is(
+  (select notes from public.meals where organization_id = '23000000-0000-0000-0000-000000000001'),
+  'Nota importada do Dietbox',
+  'save_plan_draft grava a nota da refeição'
+);
+
+-- lista de substituição usada para provar que autosave não descarta mais o vínculo da refeição
+set local role postgres;
+insert into public.equivalency_lists (id, organization_id, title, macro_group, target_calories, calorie_tolerance_pct, created_by) values
+  ('43000000-0000-0000-0000-000000000001', '23000000-0000-0000-0000-000000000001', 'Grupo 4: Carnes e Proteínas', 'protein', 150, 10, '13000000-0000-0000-0000-000000000001');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '13000000-0000-0000-0000-000000000001', true);
 
 -- autosave substitui a estrutura da versão aberta sem criar outro plano
 select lives_ok(
@@ -49,9 +62,21 @@ select lives_ok(
       (select id from public.plan_versions where organization_id = '23000000-0000-0000-0000-000000000001'),
       '{}'::jsonb,
       '{"energyKcal":2100}'::jsonb,
-      '[{"day_index":0,"label":"Dia 1","kind":"standard","meals":[{"position":0,"label":"Café da manhã","items":[{"position":0,"description":"Aveia","grams":40,"nutrient_snapshot":{}},{"position":1,"description":"Banana","grams":100,"nutrient_snapshot":{}}]}]}]'::jsonb
+      '[{"day_index":0,"label":"Dia 1","kind":"standard","meals":[{"position":0,"label":"Café da manhã","notes":"Nota depois do autosave","equivalencyListId":"43000000-0000-0000-0000-000000000001","items":[{"position":0,"description":"Aveia","grams":40,"nutrient_snapshot":{}},{"position":1,"description":"Banana","grams":100,"nutrient_snapshot":{}}]}]}]'::jsonb
     )$$,
   'autosave grava na versão de rascunho aberta'
+);
+
+select is(
+  (select equivalency_list_id from public.meals where organization_id = '23000000-0000-0000-0000-000000000001'),
+  '43000000-0000-0000-0000-000000000001'::uuid,
+  'autosave não descarta mais o vínculo com a lista de substituição (regressão do bug)'
+);
+
+select is(
+  (select notes from public.meals where organization_id = '23000000-0000-0000-0000-000000000001'),
+  'Nota depois do autosave',
+  'autosave também grava a nota da refeição'
 );
 
 select is(

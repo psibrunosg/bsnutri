@@ -57,6 +57,14 @@ describe('toPayloadDays', () => {
     expect(payload[0].meals[0].position).toBe(0)
     expect(payload[0].meals[0].items[0]).toMatchObject({ position: 0, food_id: 'food-1', grams: 40, unit: 'g' })
   })
+
+  it('sends the meal note so it is not silently dropped on save', () => {
+    const days = initialWeek().slice(0, 1)
+    days[0].meals[0].notes = 'Nota importada do Dietbox'
+    const payload = toPayloadDays(days)
+    expect(payload[0].meals[0].notes).toBe('Nota importada do Dietbox')
+    expect(payload[0].meals[1].notes).toBeNull()
+  })
 })
 
 describe('usePlanDraft copy day', () => {

@@ -45,6 +45,7 @@ export interface Meal {
   name: string
   items: FoodPortion[]
   equivalencyListId?: string
+  notes?: string
 }
 
 export interface MealTotal extends Meal {

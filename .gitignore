@@ -39,6 +39,9 @@ playwright/.cache/
 work/*.tmp.sql
 work/*.patched.sql
 
+# Dump de estrutura em transito (db:dump grava aqui antes de validar)
+supabase/schema.sql.tmp
+
 # Local duplicates (tracked elsewhere)
 docs/CONTEXTO_DOMINIO_BSNUTRI.md
 docs/agents/MEMORIA_PERMANENTE_PLANEJAMENTO.md

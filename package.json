@@ -10,6 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:artifact": "node scripts/verify-build-artifact.mjs",
+    "db:push": "node scripts/db-sync.mjs push",
+    "db:dump": "node scripts/db-sync.mjs dump",
+    "db:verify": "node scripts/db-sync.mjs verify",
     "preview": "vite preview",
     "test:e2e": "playwright test"
   },

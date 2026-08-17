@@ -60,7 +60,18 @@ supabase start
 supabase db reset
 supabase test db
 supabase stop
+
+# Banco: aplicar migrations no remoto E no local (nessa ordem)
+npm run db:push
+npm run db:push -- --dry-run   # simulação
+npm run db:dump                # regrava supabase/schema.sql (só estrutura)
+npm run db:verify              # paridade remoto x local x supabase/migrations
 ```
+
+> **Regra dura:** toda alteração de banco passa por migration versionada e é
+> aplicada no local e no remoto. Nunca só no remoto. `npm run db:push` recusa a
+> execução se a stack local estiver fora do ar — é de propósito. Ver
+> `docs/adr/0001-paridade-entre-banco-remoto-e-copia-local.md`.
 
 ### Armadilhas conhecidas
 
@@ -174,6 +185,8 @@ Antes de qualquer push para `main`, execute e confirme:
 - [ ] `npm test` passa (265 testes em 55 arquivos — atual se houver mudança)
 - [ ] `npm run build` gera `dist/` sem erros
 - [ ] Se mudou banco: `supabase test db` passa
+- [ ] Se mudou banco: `npm run db:push` foi usado (local + remoto) e `npm run db:verify` reporta paridade
+- [ ] Se mudou banco: `supabase/schema.sql` foi regravado e não contém dados
 - [ ] Não há dados reais de pacientes em commits
 - [ ] Não há credenciais (`service_role`, tokens) em commits
 - [ ] Não há arquivos `.tmp`, `.patched`, `.local` de IDE sendo commitados
