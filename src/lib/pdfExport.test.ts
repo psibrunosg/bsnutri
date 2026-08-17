@@ -25,7 +25,7 @@ function day(label: string, meals: number, itemsPerMeal: number): EditorDay {
 
 function document(overrides: Partial<PublishedPlanDocument> = {}): PublishedPlanDocument {
   return {
-    patientName: 'Bruno de Souza',
+    patientName: 'Paciente Sintético',
     planTitle: 'Plano alimentar',
     version: 1,
     days: [day('Segunda-feira', 2, 2)],
@@ -51,7 +51,7 @@ describe('exportPublishedPlanPdf', () => {
   })
 
   it('gera nome de arquivo seguro a partir do nome do paciente', () => {
-    expect(publishedPlanFileName('Bruno de Souza Gonçalves')).toBe('plano-alimentar-bruno-de-souza-goncalves.pdf')
+    expect(publishedPlanFileName('Paciente Sintético Ção')).toBe('plano-alimentar-paciente-sintetico-cao.pdf')
     expect(publishedPlanFileName('   ')).toBe('plano-alimentar-paciente.pdf')
   })
 })

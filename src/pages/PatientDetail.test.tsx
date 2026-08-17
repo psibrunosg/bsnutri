@@ -23,10 +23,10 @@ const { default: PatientDetail } = await import('./PatientDetail')
 const patient = {
   id: 'patient-1',
   anonymousCode: 'P0001',
-  fullName: 'Bruno de Souza',
+  fullName: 'Paciente Sintético',
   email: null,
   phone: null,
-  birthDate: '1998-11-27',
+  birthDate: '1990-01-15',
   status: 'active',
   tags: [],
   objective: null,
