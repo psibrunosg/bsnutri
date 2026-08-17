@@ -21,7 +21,7 @@ export const AUTOSAVE_DELAY_MS = 1500
 const DRAFT_SELECT =
   'id,patient_id,title,status,updated_at,' +
   'plan_versions!plan_versions_plan_id_organization_id_fkey(id,version_no,targets,assistant_state,locked_at,' +
-  'plan_days(id,label,kind,day_index,meals(id,label,position,equivalency_list_id,' +
+  'plan_days(id,label,kind,day_index,meals(id,label,position,equivalency_list_id,notes,' +
   'meal_items(id,food_id,description,grams,nutrient_snapshot,meal_item_substitutions(is_active))))))'
 
 export const cloneMeal = (meal: Meal): Meal => ({
@@ -62,6 +62,7 @@ export function toPayloadDays(days: EditorDay[]) {
       label: meal.name,
       name: meal.name,
       equivalency_list_id: meal.equivalencyListId ?? null,
+      notes: meal.notes ?? null,
       items: meal.items.map((item, itemPosition) => ({
         position: itemPosition,
         food_id: item.foodId ?? null,

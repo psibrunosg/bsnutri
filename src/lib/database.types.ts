@@ -1799,6 +1799,7 @@ export type Database = {
           equivalency_list_id: string | null
           id: string
           label: string
+          notes: string | null
           organization_id: string
           plan_day_id: string
           position: number
@@ -1808,6 +1809,7 @@ export type Database = {
           equivalency_list_id?: string | null
           id?: string
           label: string
+          notes?: string | null
           organization_id: string
           plan_day_id: string
           position: number
@@ -1817,6 +1819,7 @@ export type Database = {
           equivalency_list_id?: string | null
           id?: string
           label?: string
+          notes?: string | null
           organization_id?: string
           plan_day_id?: string
           position?: number

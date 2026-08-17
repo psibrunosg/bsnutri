@@ -3,7 +3,7 @@ import { sanitizeAssistantState, type PlanAssistantState } from './planAssistant
 
 export type EditorDay = { id: string; label: string; kind: string; meals: Meal[] }
 type PlanItemRow = { id: string; food_id?: string | null; description: string; grams: number; nutrient_snapshot: Partial<Nutrients> | null; meal_item_substitutions?: { is_active: boolean }[] }
-type PlanMealRow = { id: string; label: string; position: number; equivalency_list_id?: string | null; meal_items: PlanItemRow[] }
+type PlanMealRow = { id: string; label: string; position: number; equivalency_list_id?: string | null; notes?: string | null; meal_items: PlanItemRow[] }
 type PlanDayRow = { id: string; label: string; kind: string; day_index: number; meals: PlanMealRow[] }
 type PlanVersionRow = { id: string; version_no: number; targets?: Record<string,number>; assistant_state?: unknown; locked_at?: string | null; plan_days: PlanDayRow[] }
 export type PlanRow = { id: string; patient_id: string; title: string; status?: string; updated_at: string; plan_versions: PlanVersionRow[] }
@@ -15,7 +15,7 @@ export function mapDraftRows(rows: PlanRow[]): DraftSummary[] {
     const days=[...(version?.plan_days??[])].sort((a,b)=>a.day_index-b.day_index).map(day=>({
       id:day.id,label:day.label,kind:day.kind,
       meals:[...(day.meals??[])].sort((a,b)=>a.position-b.position).map(meal=>({
-        id:meal.id,name:meal.label,equivalencyListId:meal.equivalency_list_id??undefined,
+        id:meal.id,name:meal.label,equivalencyListId:meal.equivalency_list_id??undefined,notes:meal.notes??undefined,
         items:[...(meal.meal_items??[])].map(item=>({id:item.id,foodId:item.food_id??undefined,name:item.description,grams:Number(item.grams),nutrientsPer100g:{...emptyNutrients(),...(item.nutrient_snapshot??{})},hasReviewedSubstitution:(item.meal_item_substitutions??[]).some(substitution=>substitution.is_active)})),
       })),
     }))
