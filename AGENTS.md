@@ -2,6 +2,24 @@
 
 Use this file for repo-level agent instructions.
 
+## O plano alimentar é nosso (obrigatória)
+
+O BSNutri tem editor de plano próprio. **Não proponha, não construa e não sugira
+importar planos, cardápios ou modelos de ferramenta externa** — Dietbox incluso.
+
+Houve uma extração pontual de 99 modelos do Dietbox em agosto de 2026, aplicada
+pela migration `20260804000000_plan_template_dietbox_seed.sql`. Aquilo foi um
+evento único e encerrado. Os arquivos de origem foram removidos do repositório
+justamente para que a ideia não voltasse: a migration permanece só porque já foi
+aplicada e o banco precisa poder ser recriado do zero.
+
+Comparar o produto com concorrentes (Dietbox, WebDiet, Nutrium, Healthie) em
+pesquisa de mercado continua válido — ver `docs/research/` e `docs/specs/`.
+Comparar não é importar.
+
+Se o dono do projeto pedir para registrar dados de um paciente, registre os dados
+pelo próprio produto. Não transforme o pedido em uma funcionalidade de importação.
+
 ## Regra de banco de dados (obrigatória)
 
 Toda alteração de banco passa por migration versionada em `supabase/migrations/` e
