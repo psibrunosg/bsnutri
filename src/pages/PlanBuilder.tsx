@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ClipboardList, FileDown, FileUp, Layers, Lock, Plus, Repeat2, Save, Search, Trash2, X } from 'lucide-react'
-import { DietboxImportModal } from '../components/DietboxImportModal'
+import { ArrowLeft, ClipboardList, FileDown, Layers, Lock, Plus, Repeat2, Save, Search, Trash2, X } from 'lucide-react'
 import { PlanAssistantPanel } from '../components/PlanAssistantPanel'
 import { CATALOG_PAGE_SIZE, type CatalogDataSource, type CatalogFoodSummary } from '../lib/catalogSearch'
-import { createSupabaseDietboxImportDataSource } from '../lib/dietboxImportWrite'
 import { totalDay } from '../lib/nutrition'
 import type { PatientSummary } from '../lib/patients'
 import { exportPublishedPlanPdf, toPublishedPlanDocument } from '../lib/pdf'
@@ -245,9 +243,7 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
   const [exporting, setExporting] = useState(false)
   const [substitutions, setSubstitutions] = useState<PrescribedSubstitutionRow[]>([])
   const [substitutionFor, setSubstitutionFor] = useState<{ itemId: string; itemName: string } | null>(null)
-  const [showDietboxImport, setShowDietboxImport] = useState(false)
   const substitutionSource = useMemo(() => createSupabaseSubstitutionDataSource(), [])
-  const dietboxWriteSource = useMemo(() => createSupabaseDietboxImportDataSource(), [])
   const plan = usePlanDraft({ organizationId, userId, onMessage: setMessage })
   const { openDraft, drafts, setPatientId } = plan
 
@@ -387,7 +383,6 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
 
         <div className="flex flex-wrap gap-2.5">
           <button type="button" className="btn-ghost" disabled={readOnly} onClick={() => setShowTemplates(true)}><Layers size={16} /> Aplicar modelo</button>
-          <button type="button" className="btn-ghost" disabled={readOnly} onClick={() => setShowDietboxImport(true)}><FileUp size={16} /> Importar do Dietbox</button>
           <button type="button" className="btn-ghost" onClick={() => setShowAssistant(true)}><ClipboardList size={16} /> Assistente</button>
           <button type="button" className="btn-ghost" disabled={plan.busy || readOnly} onClick={() => void plan.save()}><Save size={16} /> Salvar rascunho</button>
           <button
@@ -555,32 +550,6 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
           mealName={substitutionFor.itemName}
           onClose={() => setSubstitutionFor(null)}
           onPick={(food, grams) => void prescribeSubstitution(food, grams)}
-        />
-      )}
-
-      {showDietboxImport && (
-        <DietboxImportModal
-          organizationId={organizationId}
-          userId={userId}
-          catalogSource={catalogSource}
-          writeSource={dietboxWriteSource}
-          substitutionSource={substitutionSource}
-          patientId={plan.patientId}
-          title={plan.title}
-          targets={plan.targets}
-          assistantState={plan.assistant}
-          days={plan.days}
-          activeDayIndex={plan.activeDay}
-          loadDrafts={plan.loadDrafts}
-          onClose={() => setShowDietboxImport(false)}
-          onImported={(draftId) => {
-            setShowDietboxImport(false)
-            void (async () => {
-              const next = await plan.loadDrafts()
-              const created = next.find((draft) => draft.id === draftId)
-              if (created) plan.openDraft(created)
-            })()
-          }}
         />
       )}
 
