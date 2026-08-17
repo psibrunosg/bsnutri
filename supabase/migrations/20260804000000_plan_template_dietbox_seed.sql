@@ -1,4 +1,10 @@
--- Importa 99 modelos de cardápio convertidos de Dietbox (docs/seed/modelos-plano-dietbox.json),
+-- HISTÓRICO — NÃO REPETIR. Esta migration já foi aplicada e permanece aqui só para
+-- que o banco possa ser recriado do zero. Ela NÃO é uma direção de produto: o
+-- BSNutri tem editor de plano próprio e não importa planos de ferramenta externa.
+-- Os arquivos de origem (JSON e conversor) foram removidos do repositório de
+-- propósito, para que ninguém regenere isto. Ver a regra em AGENTS.md.
+--
+-- Importa 99 modelos de cardápio convertidos de Dietbox (arquivo de origem removido),
 -- com nomes normalizados para o vocabulário BSNutri (sem marca de terceiros) e estrutura completa das
 -- refeições preservada em snapshot. Idempotente via unique index (organization_id, (snapshot->>'dietboxId')).
 -- Revisão clínica obrigatória antes de qualquer uso (ver docs/nutrition-data-policy.md).
