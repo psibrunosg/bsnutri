@@ -128,3 +128,22 @@ describe('PlanBuilder — PDF', () => {
     expect(await screen.findByText('Abra um plano da lista ao lado para gerar o PDF.')).toBeInTheDocument()
   })
 })
+
+describe('PlanBuilder — substituições e publicação', () => {
+  afterEach(() => cleanup())
+
+  it('exige salvar o plano antes de prescrever substituição', async () => {
+    setup()
+    fireEvent.click(screen.getAllByRole('button', { name: /adicionar/ })[0])
+    fireEvent.click(await screen.findByRole('button', { name: /Arroz branco/ }))
+
+    fireEvent.click(screen.getAllByRole('button', { name: /substituição/ })[0])
+    expect(await screen.findByText('Salve o plano antes de prescrever substituições para os itens.')).toBeInTheDocument()
+  })
+
+  it('publica em um único botão, sem passo de revisão separado', () => {
+    setup()
+    expect(screen.getByRole('button', { name: /Publicar plano/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Revisar$/ })).not.toBeInTheDocument()
+  })
+})

@@ -53,8 +53,10 @@ insert into public.meal_items (id,organization_id,meal_id,position,description,q
 set local role authenticated;
 select set_config('request.jwt.claim.sub','11000000-0000-0000-0000-000000000001',true);
 select set_config('request.jwt.claim.role','authenticated',true);
-select throws_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":2000,"protein_g":100}'::jsonb)$$,null,null,'assistente incompleto bloqueia revisao');
-select throws_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":2000,"protein_g":100,"carbohydrate_g":220,"fat_g":70,"fiber_g":30}'::jsonb,'{"currentStep":"review","completedSteps":["objective","targets","meals","equivalents"],"objective":"Plano clinico","priorityMicronutrients":["Ferro"]}'::jsonb)$$,null,null,'metas obrigatorias bloqueiam revisao');
+-- Desde 20260816170000 a revisao nao exige mais o assistente declarado nem metas
+-- completas. O que continua barrado e meta invalida (numero negativo).
+select throws_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":-10}'::jsonb)$$,null,null,'meta negativa bloqueia revisao');
+select lives_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":2000,"protein_g":100}'::jsonb)$$,'revisao aceita plano sem todas as metas estipuladas');
 select lives_ok($$select public.review_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','{"energy_kcal":2000,"protein_g":100,"carbohydrate_g":220,"fat_g":70,"fiber_g":30,"water_ml":2500}'::jsonb,'{"currentStep":"review","completedSteps":["objective","targets","meals","equivalents"],"objective":"Plano clinico","priorityMicronutrients":["Ferro"]}'::jsonb)$$,'nutricionista revisa versão com metas');
 select lives_ok($$select public.publish_plan_version('41000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001')$$,'nutricionista publica versão revisada');
 select ok((select locked_at is not null and published_at is not null and content_hash is not null from public.plan_versions where id='51000000-0000-0000-0000-000000000001'),'publicação bloqueia e assina a versão');
