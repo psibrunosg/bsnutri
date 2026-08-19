@@ -201,15 +201,33 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
   )
 }
 
-export function PageHeader({ eyebrow, title, description, actions }: { eyebrow: string; title: string; description?: string; actions?: ReactNode }) {
+export function PageHeader({ eyebrow, title, description, actions, backButton }: { eyebrow: ReactNode; title: ReactNode; description?: ReactNode; actions?: ReactNode; backButton?: ReactNode }) {
   return (
-    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p className="eyebrow mb-2">{eyebrow}</p>
-        <h1 className="font-display text-[34px] font-semibold leading-tight text-foreground">{title}</h1>
-        {description && <p className="mt-1.5 max-w-xl text-[15px] text-muted-foreground">{description}</p>}
+    <header className="relative mb-6 flex gap-4">
+      {backButton && <div className="mt-1 shrink-0">{backButton}</div>}
+      <div className="min-w-0 flex-1">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-9 hidden h-[128px] w-[46%] overflow-hidden rounded-bl-[44px] lg:block">
+          <div className="absolute inset-0 bg-[linear-gradient(115deg,#eff3e7_0%,#dfe8d1_48%,#c9d8b5_100%)]" />
+          <img src="./dashboard/hero-bowl.webp" alt="" className="h-full w-full object-cover" />
+        </div>
+        <Leaf aria-hidden="true" className="pointer-events-none absolute -top-3 right-[47.5%] hidden h-[104px] w-[104px] -rotate-[18deg] text-amber-300/45 lg:block" strokeWidth={0.8} />
+
+        <div className="relative flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-[560px]">
+            <div className="flex items-center gap-2 text-[15px] text-foreground/75 font-medium">
+              {eyebrow}
+            </div>
+            {typeof title === 'string' ? (
+              <h1 className="mt-2 font-display text-[38px] font-semibold leading-[1.08] text-foreground">{title}</h1>
+            ) : (
+              <div className="mt-2">{title}</div>
+            )}
+            <span aria-hidden="true" className="mt-3.5 block h-1 w-11 rounded-full bg-amber-400" />
+            {description && <div className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{description}</div>}
+          </div>
+          {actions && <div className="flex items-center gap-3">{actions}</div>}
+        </div>
       </div>
-      {actions && <div className="flex items-center gap-3">{actions}</div>}
-    </div>
+    </header>
   )
 }

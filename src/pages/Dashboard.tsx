@@ -3,6 +3,7 @@ import { CalendarDays, ChevronRight, ClipboardList, FileText, Info, Leaf, MoreVe
 import { bodyMassIndex, bodyMassIndexCategory } from '../lib/clinicalMetrics'
 import type { PatientSummary } from '../lib/patients'
 import { supabase } from '../lib/supabase'
+import { PageHeader } from '../components/Shell'
 
 const LABEL = 'font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground'
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -351,35 +352,26 @@ export default function Dashboard({ organizationId, memberName, patients, onOpen
 
   return (
     <>
-      <header className="relative mb-6">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-9 hidden h-[128px] w-[46%] overflow-hidden rounded-bl-[44px] lg:block">
-          <div className="absolute inset-0 bg-[linear-gradient(115deg,#eff3e7_0%,#dfe8d1_48%,#c9d8b5_100%)]" />
-          <img src="./dashboard/hero-bowl.webp" alt="" className="h-full w-full object-cover" />
-        </div>
-        <Leaf aria-hidden="true" className="pointer-events-none absolute -top-3 right-[47.5%] hidden h-[104px] w-[104px] -rotate-[18deg] text-amber-300/45 lg:block" strokeWidth={0.8} />
-
-        <div className="relative flex flex-wrap items-end justify-between gap-6">
-          <div className="max-w-[560px]">
-            <p className="flex items-center gap-2 text-[15px] text-foreground/75">
-              Olá, {memberName}
-              <Sprout size={17} strokeWidth={1.8} className="text-forest-400" aria-hidden="true" />
-            </p>
-            <h1 className="mt-2 font-display text-[38px] font-semibold leading-[1.08] text-foreground">Visão geral do consultório</h1>
-            <span aria-hidden="true" className="mt-3.5 block h-1 w-11 rounded-full bg-amber-400" />
-            <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-              Acompanhe seus pacientes, publique planos e mantenha a semana de todo mundo organizada.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
+      <PageHeader
+        eyebrow={
+          <>
+            Olá, {memberName}
+            <Sprout size={17} strokeWidth={1.8} className="text-forest-400" aria-hidden="true" />
+          </>
+        }
+        title="Visão geral do consultório"
+        description="Acompanhe seus pacientes, publique planos e mantenha a semana de todo mundo organizada."
+        actions={
+          <>
             <button type="button" className="btn-ghost" onClick={onCreatePatient}>
               <UserPlus size={17} strokeWidth={1.9} aria-hidden="true" /> Novo paciente
             </button>
             <button type="button" className="btn-primary" onClick={() => onOpenPlan()}>
               <CalendarDays size={17} strokeWidth={1.9} aria-hidden="true" /> Novo plano
             </button>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {error && <p className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive" role="alert">{error}</p>}
 

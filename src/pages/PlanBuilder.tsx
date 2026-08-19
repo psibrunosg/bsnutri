@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ClipboardList, FileDown, Layers, Lock, Plus, Repeat2, Save, Search, Trash2, X } from 'lucide-react'
+import { PageHeader } from '../components/Shell'
 import { PlanAssistantPanel } from '../components/PlanAssistantPanel'
 import { CATALOG_PAGE_SIZE, type CatalogDataSource, type CatalogFoodSummary } from '../lib/catalogSearch'
 import { totalDay } from '../lib/nutrition'
@@ -355,13 +356,14 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
 
   return (
     <>
-      <button type="button" className="mb-6 flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground" onClick={onBack}>
-        <ArrowLeft size={15} /> Voltar
-      </button>
-
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-[280px] flex-1">
-          <p className="eyebrow mb-2">Construtor de plano</p>
+      <PageHeader
+        backButton={
+          <button type="button" aria-label="Voltar" className="mt-1 rounded-xl p-2 text-muted-foreground hover:bg-forest-50 hover:text-forest-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </button>
+        }
+        eyebrow="Construtor de plano"
+        title={
           <input
             aria-label="Título do plano"
             className="w-full max-w-lg border-b border-transparent bg-transparent font-display text-3xl font-semibold outline-none transition-colors focus:border-forest-300"
@@ -369,7 +371,9 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
             disabled={readOnly}
             onChange={(event) => plan.setTitle(event.target.value)}
           />
-          <div className="mt-2 flex flex-wrap items-center gap-3">
+        }
+        description={
+          <div className="flex flex-wrap items-center gap-3">
             <select aria-label="Paciente do plano" className="input-warm !w-auto !py-1.5 text-sm" value={plan.patientId} disabled={readOnly} onChange={(event) => plan.setPatientId(event.target.value)}>
               <option value="">Selecione o paciente</option>
               {patients.map((item) => <option key={item.id} value={item.id}>{item.fullName}</option>)}
@@ -379,30 +383,31 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
               {plan.autosaveState === 'saving' ? 'gravando...' : plan.autosaveState === 'saved' ? 'gravado no servidor' : plan.autosaveState === 'error' ? 'falha na gravação' : ''}
             </span>
           </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2.5">
-          <button type="button" className="btn-ghost" disabled={readOnly} onClick={() => setShowTemplates(true)}><Layers size={16} /> Aplicar modelo</button>
-          <button type="button" className="btn-ghost" onClick={() => setShowAssistant(true)}><ClipboardList size={16} /> Assistente</button>
-          <button type="button" className="btn-ghost" disabled={plan.busy || readOnly} onClick={() => void plan.save()}><Save size={16} /> Salvar rascunho</button>
-          <button
-            type="button"
-            className="btn-ghost"
-            disabled={exporting}
-            title={pdfBlockReason() ?? 'Gerar o PDF da versão publicada'}
-            onClick={() => {
-              const reason = pdfBlockReason()
-              if (reason) return setMessage(reason)
-              if (openDraftSummary) void exportPdf(openDraftSummary)
-            }}
-          >
-            <FileDown size={16} /> {exporting ? 'Gerando...' : 'PDF'}
-          </button>
-          <button type="button" className="btn-amber" disabled={plan.busy || readOnly || !plan.loadedDraft} onClick={() => void plan.publish()}>
-            <Lock size={16} /> {plan.busy ? 'Publicando...' : 'Publicar plano'}
-          </button>
-        </div>
-      </div>
+        }
+        actions={
+          <div className="flex flex-wrap gap-2.5">
+            <button type="button" className="btn-ghost" disabled={readOnly} onClick={() => setShowTemplates(true)}><Layers size={16} /> Aplicar modelo</button>
+            <button type="button" className="btn-ghost" onClick={() => setShowAssistant(true)}><ClipboardList size={16} /> Assistente</button>
+            <button type="button" className="btn-ghost" disabled={plan.busy || readOnly} onClick={() => void plan.save()}><Save size={16} /> Salvar rascunho</button>
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={exporting}
+              title={pdfBlockReason() ?? 'Gerar o PDF da versão publicada'}
+              onClick={() => {
+                const reason = pdfBlockReason()
+                if (reason) return setMessage(reason)
+                if (openDraftSummary) void exportPdf(openDraftSummary)
+              }}
+            >
+              <FileDown size={16} /> {exporting ? 'Gerando...' : 'PDF'}
+            </button>
+            <button type="button" className="btn-amber" disabled={plan.busy || readOnly || !plan.loadedDraft} onClick={() => void plan.publish()}>
+              <Lock size={16} /> {plan.busy ? 'Publicando...' : 'Publicar plano'}
+            </button>
+          </div>
+        }
+      />
 
       {message && <p className="mb-4 rounded-xl border border-border bg-cream-100/60 p-3 text-sm" role="status">{message}</p>}
       {readOnly && (
