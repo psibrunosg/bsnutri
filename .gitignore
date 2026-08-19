@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 graphify-out/
+old_db.ts
 
 # Editor directories and files
 .vscode/*
