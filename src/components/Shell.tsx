@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Apple, BookOpen, CalendarPlus, Layers, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react'
+import { Apple, BookOpen, CalendarPlus, ChevronDown, Layers, LayoutDashboard, Leaf, LogOut, Menu, Users, X } from 'lucide-react'
 import type { AppRoute, Page } from '../lib/appRoute'
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion'
 import type { WorkspaceAccess } from '../types'
@@ -20,6 +20,11 @@ const ROLE_LABELS = {
   student: 'Estagiário',
   receptionist: 'Recepção',
 } as const
+
+function memberInitials(name: string): string {
+  const parts = name.split(' ').filter((part) => part.length > 2)
+  return (parts.length ? parts : name.split(' ')).map((part) => part[0] ?? '').slice(0, 2).join('').toUpperCase()
+}
 
 export interface ShellProps {
   children: ReactNode
@@ -112,13 +117,13 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
         aria-label="Navegação principal"
         data-open={drawerOpen ? 'true' : 'false'}
         data-motion={prefersReducedMotion ? 'reduced' : 'full'}
-        className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col bg-forest-800 text-cream-100 shadow-2xl ${prefersReducedMotion ? 'transition-none' : 'transition-transform duration-200'} lg:z-40 lg:visible lg:translate-x-0 lg:shadow-none ${drawerOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col bg-forest-800 text-cream-100 shadow-2xl ${prefersReducedMotion ? 'transition-none' : 'transition-transform duration-200'} lg:z-40 lg:visible lg:translate-x-0 lg:shadow-none ${drawerOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'}`}
       >
-        <div className="flex items-center gap-3 px-5 pb-7 pt-6">
-          <img src="./app-icon.png" alt="BSNutri" className="h-11 w-11 rounded-full ring-2 ring-amber-400/60" />
+        <div className="flex items-center gap-3 px-6 pb-7 pt-6">
+          <img src="./app-icon.png" alt="BSNutri" className="h-[52px] w-[52px] shrink-0 rounded-full object-cover ring-2 ring-amber-400/70" />
           <div className="min-w-0 flex-1">
-            <p className="font-display text-lg font-semibold leading-none">BSNutri</p>
-            <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.16em] text-cream-100/50">{workspace.organizationName}</p>
+            <p className="font-display text-[22px] font-semibold leading-none">BSNutri</p>
+            <p className="mt-1.5 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-cream-100/50">{workspace.organizationName}</p>
           </div>
           <button
             ref={closeRef}
@@ -131,7 +136,7 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
           </button>
         </div>
 
-        <div className="flex-1 space-y-1 px-3">
+        <div className="space-y-1 px-3.5">
           {NAV.map(({ route: next, label, icon: Icon, activePages }) => {
             const active = activePages.includes(route.page)
             return (
@@ -140,37 +145,57 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
                 key={label}
                 aria-current={active ? 'page' : undefined}
                 onClick={() => navigate(next)}
-                className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${active ? 'bg-forest-600 text-cream-50 shadow-warm' : 'text-cream-100/70 hover:bg-white/5 hover:text-cream-50'}`}
+                className={`group flex w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-left text-[15px] font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${active ? 'bg-forest-600 text-cream-50 shadow-warm' : 'text-cream-100/70 hover:bg-white/5 hover:text-cream-50'}`}
               >
-                <Icon size={17} strokeWidth={2} className={active ? 'text-amber-300' : 'text-cream-100/50 group-hover:text-amber-300'} />
+                <Icon size={19} strokeWidth={1.9} className={active ? 'text-amber-300' : 'text-cream-100/50 group-hover:text-amber-300'} />
                 {label}
               </button>
             )
           })}
         </div>
 
-        <div className="space-y-1 px-3 pb-6">
+        <div className="flex-1" />
+
+        {/* O bloco de identidade fica depois de Sair e permanece não interativo:
+            o foco do drawer termina no botão Sair. */}
+        <div className="px-3.5">
+          <div className="mb-3 border-t border-white/10" />
           <button
             type="button"
             onClick={onLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-cream-100/70 transition-all hover:bg-white/5 hover:text-cream-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+            className="flex w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-left text-[15px] font-medium text-cream-100/70 transition-all duration-200 hover:bg-white/5 hover:text-cream-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
           >
-            <LogOut size={17} className="text-cream-100/50" />
+            <LogOut size={19} strokeWidth={1.9} className="text-cream-100/50" />
             Sair
           </button>
-          <div className="mt-3 border-t border-white/10 px-3.5 pt-4">
-            <p className="truncate text-[13px] font-semibold">{workspace.memberName}</p>
-            <p className="truncate text-xs text-cream-100/50">{ROLE_LABELS[workspace.role]}</p>
+          <div className="mt-3 flex items-center gap-3 border-t border-white/10 px-2 pt-4">
+            <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-forest-600 font-display text-[15px] font-semibold text-cream-50 ring-1 ring-white/15">
+              {memberInitials(workspace.memberName)}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-semibold">{workspace.memberName}</span>
+              <span className="block truncate text-[12px] text-cream-100/50">{ROLE_LABELS[workspace.role]}</span>
+            </span>
+            <ChevronDown size={17} aria-hidden="true" className="shrink-0 text-cream-100/45" />
           </div>
+        </div>
+
+        <div className="relative mt-5 px-6 pb-7">
+          <Leaf aria-hidden="true" className="pointer-events-none absolute -left-2 bottom-2 h-[72px] w-[72px] -rotate-[18deg] text-cream-100/[0.07]" strokeWidth={1} />
+          <p className="relative text-center text-[12px] leading-relaxed text-cream-100/45">
+            Nutrição que transforma
+            <br />
+            ciência, saúde e bem-estar.
+          </p>
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 lg:ml-60" inert={drawerOpen || undefined} aria-hidden={drawerOpen || undefined}>
-        <header className="border-b border-border bg-card/60 px-5 py-4 pl-16 backdrop-blur lg:px-8">
+      <main className="min-w-0 flex-1 overflow-x-clip lg:ml-[264px]" inert={drawerOpen || undefined} aria-hidden={drawerOpen || undefined}>
+        <header className="border-b border-border bg-card/60 px-5 py-4 pl-16 backdrop-blur lg:hidden">
           <p className="text-xs text-muted-foreground">{workspace.organizationName}</p>
           <p className="text-sm font-semibold text-foreground">{workspace.memberName}</p>
         </header>
-        <div className="mx-auto max-w-[1200px] px-5 py-8 lg:px-8">{children}</div>
+        <div className="mx-auto max-w-[1400px] px-5 py-8 lg:px-10 lg:py-9">{children}</div>
       </main>
     </div>
   )
