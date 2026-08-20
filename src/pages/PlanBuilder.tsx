@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ClipboardList, FileDown, Layers, Lock, Plus, Repeat2, Save, Search, Trash2, X } from 'lucide-react'
-import { PageHeader } from '../components/Shell'
+import { ClipboardList, FileDown, Layers, Lock, Plus, Repeat2, Save, Search, Trash2, X } from 'lucide-react'
+import { BackButton, PageHeader } from '../components/Shell'
 import { PlanAssistantPanel } from '../components/PlanAssistantPanel'
 import { CATALOG_PAGE_SIZE, type CatalogDataSource, type CatalogFoodSummary } from '../lib/catalogSearch'
+import { PALETTE } from '../lib/chartPalette'
 import { totalDay } from '../lib/nutrition'
 import type { PatientSummary } from '../lib/patients'
 import { exportPublishedPlanPdf, toPublishedPlanDocument } from '../lib/pdf'
@@ -19,10 +20,10 @@ import { useDebouncedValue } from '../lib/useDebouncedValue'
 import { usePlanDraft } from '../lib/usePlanDraft'
 
 const MACRO_DOTS = [
-  { key: 'energyKcal', label: 'Calorias', unit: 'kcal', color: '#4a6741' },
-  { key: 'proteinG', label: 'Proteína', unit: 'g', color: '#85591d' },
-  { key: 'carbohydrateG', label: 'Carboidrato', unit: 'g', color: '#c98f2f' },
-  { key: 'fatG', label: 'Gordura', unit: 'g', color: '#749966' },
+  { key: 'energyKcal', label: 'Calorias', unit: 'kcal', color: PALETTE.forest500 },
+  { key: 'proteinG', label: 'Proteína', unit: 'g', color: PALETTE.amber700 },
+  { key: 'carbohydrateG', label: 'Carboidrato', unit: 'g', color: PALETTE.amber500 },
+  { key: 'fatG', label: 'Gordura', unit: 'g', color: PALETTE.forest400 },
 ] as const
 
 const STATUS_LABELS: Record<string, string> = {
@@ -357,20 +358,21 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
   return (
     <>
       <PageHeader
-        backButton={
-          <button type="button" aria-label="Voltar" className="mt-1 rounded-xl p-2 text-muted-foreground hover:bg-forest-50 hover:text-forest-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" onClick={onBack}>
-            <ArrowLeft size={20} />
-          </button>
-        }
+        backButton={<BackButton onClick={onBack} label="Voltar" />}
         eyebrow="Construtor de plano"
         title={
-          <input
-            aria-label="Título do plano"
-            className="w-full max-w-lg border-b border-transparent bg-transparent font-display text-3xl font-semibold outline-none transition-colors focus:border-forest-300"
-            value={plan.title}
-            disabled={readOnly}
-            onChange={(event) => plan.setTitle(event.target.value)}
-          />
+          <>
+            {/* O título editável é um input, cujo valor não vira nome acessível de heading.
+                Sem este h1 a página fica sem cabeçalho de primeiro nível. */}
+            <h1 className="sr-only">{plan.title || 'Plano alimentar sem título'}</h1>
+            <input
+              aria-label="Título do plano"
+              className="w-full max-w-lg border-b border-transparent bg-transparent font-display text-3xl font-semibold outline-none transition-colors focus:border-forest-300"
+              value={plan.title}
+              disabled={readOnly}
+              onChange={(event) => plan.setTitle(event.target.value)}
+            />
+          </>
         }
         description={
           <div className="flex flex-wrap items-center gap-3">
@@ -438,7 +440,7 @@ export default function PlanBuilder({ organizationId, userId, patients, catalogS
 
       {pendingCopy && (
         <div className="card-warm mb-6 border-amber-200 bg-amber-50/60 p-4" role="alertdialog" aria-label="Confirmar cópia de dia">
-          <p className="text-sm text-amber-800">
+          <p className="text-sm text-amber-700">
             {plan.days[pendingCopy.to]?.label} já tem conteúdo. Copiar vai substituir tudo que está gravado nesse dia.
           </p>
           <div className="mt-3 flex gap-2">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Apple, BookOpen, CalendarPlus, ChevronDown, Layers, LayoutDashboard, Leaf, LogOut, Menu, Users, X } from 'lucide-react'
+import { Apple, ArrowLeft, BookOpen, CalendarPlus, ChevronDown, Layers, LayoutDashboard, Leaf, LogOut, Menu, Users, X } from 'lucide-react'
 import type { AppRoute, Page } from '../lib/appRoute'
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion'
 import type { WorkspaceAccess } from '../types'
@@ -105,7 +105,7 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
         <div
           aria-hidden="true"
           data-testid="drawer-overlay"
-          className="fixed inset-0 z-40 bg-forest-950/55 backdrop-blur-[1px] lg:hidden"
+          className="fixed inset-0 z-40 bg-forest-900/55 backdrop-blur-[1px] lg:hidden"
           onClick={() => closeDrawer(true)}
         />
       )}
@@ -201,14 +201,28 @@ export function Shell({ children, route, workspace, onNavigate, onLogout }: Shel
   )
 }
 
-export function PageHeader({ eyebrow, title, description, actions, backButton }: { eyebrow: ReactNode; title: ReactNode; description?: ReactNode; actions?: ReactNode; backButton?: ReactNode }) {
+export function BackButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className="mt-1 rounded-xl p-2 text-muted-foreground transition-colors hover:bg-forest-50 hover:text-forest-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+      onClick={onClick}
+    >
+      <ArrowLeft size={20} />
+    </button>
+  )
+}
+
+export function PageHeader({ eyebrow, title, description, actions, backButton, heroImage }: { eyebrow: ReactNode; title: ReactNode; description?: ReactNode; actions?: ReactNode; backButton?: ReactNode; heroImage?: string }) {
   return (
     <header className="relative mb-6 flex gap-4">
-      {backButton && <div className="mt-1 shrink-0">{backButton}</div>}
+      {backButton && <div className="shrink-0">{backButton}</div>}
       <div className="min-w-0 flex-1">
         <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-9 hidden h-[128px] w-[46%] overflow-hidden rounded-bl-[44px] lg:block">
           <div className="absolute inset-0 bg-[linear-gradient(115deg,#eff3e7_0%,#dfe8d1_48%,#c9d8b5_100%)]" />
-          <img src="./dashboard/hero-bowl.webp" alt="" className="h-full w-full object-cover" />
+          {heroImage && <img src={heroImage} alt="" className="h-full w-full object-cover" />}
         </div>
         <Leaf aria-hidden="true" className="pointer-events-none absolute -top-3 right-[47.5%] hidden h-[104px] w-[104px] -rotate-[18deg] text-amber-300/45 lg:block" strokeWidth={0.8} />
 

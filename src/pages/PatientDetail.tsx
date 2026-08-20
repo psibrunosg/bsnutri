@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowLeft } from 'lucide-react'
 import { NutritionalEstimator } from '../components/NutritionalEstimator'
+import { PageHeader, BackButton } from '../components/Shell'
 import { ageInYears, bodyMassIndex, bodyMassIndexCategory, waistHipRatio, weightDelta } from '../lib/clinicalMetrics'
 import type { PatientSummary } from '../lib/patients'
 import { supabase } from '../lib/supabase'
@@ -230,31 +230,23 @@ export default function PatientDetail({ patient, organizationId, userId, section
 
   return (
     <div className="space-y-6">
-      <button type="button" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground" onClick={onBack}>
-        <ArrowLeft size={15} /> Voltar para pacientes
-      </button>
-
-      <header className="card-warm p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-forest-100 font-display text-xl font-semibold text-forest-600">
+      <PageHeader
+        backButton={<BackButton onClick={onBack} label="Voltar para pacientes" />}
+        eyebrow={
+          <>
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-forest-100 font-display text-sm font-semibold text-forest-600">
               {patient.fullName.split(' ').map((part) => part[0]).slice(0, 2).join('')}
-            </div>
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{patient.anonymousCode}</p>
-              <h1 className="font-display text-3xl font-semibold leading-tight">{patient.fullName}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {age === null ? 'Idade não informada' : `${age} anos`}
-                {patient.email ? ` · ${patient.email}` : ''}
-              </p>
-            </div>
-          </div>
-          <button type="button" className="btn-primary" onClick={() => onOpenPlan(record.plans[0]?.id)}>
-            {record.plans.length ? 'Abrir plano alimentar' : 'Criar plano alimentar'}
-          </button>
-        </div>
+            </span>
+            <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{patient.anonymousCode}</span>
+          </>
+        }
+        title={patient.fullName}
+        description={<>{age === null ? 'Idade não informada' : `${age} anos`}{patient.email ? ` · ${patient.email}` : ''}</>}
+        actions={<button type="button" className="btn-primary" onClick={() => onOpenPlan(record.plans[0]?.id)}>{record.plans.length ? 'Abrir plano alimentar' : 'Criar plano alimentar'}</button>}
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-4">
+      <section className="card-warm p-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Peso atual" value={latest?.weight_kg === null || latest?.weight_kg === undefined ? '—' : `${latest.weight_kg} kg`} />
           <Stat label="IMC" value={index === null ? '—' : `${index.toFixed(1)}${category ? ` · ${category.label}` : ''}`} />
           <Stat label="Cintura-quadril" value={ratio === null ? '—' : ratio.toFixed(2)} />
@@ -268,7 +260,7 @@ export default function PatientDetail({ patient, organizationId, userId, section
             {latestAssessment?.allergies && <span className="chip border-destructive/30 bg-destructive/10 text-destructive">Alergia: {latestAssessment.allergies}</span>}
           </div>
         )}
-      </header>
+      </section>
 
       {errors.map((item) => <p key={item} className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{item}</p>)}
       {message && <p className="rounded-xl border border-border bg-cream-100/60 p-3 text-sm" role="status">{message}</p>}
@@ -281,9 +273,7 @@ export default function PatientDetail({ patient, organizationId, userId, section
             type="button"
             aria-current={active === item.id ? 'page' : undefined}
             onClick={() => onSelectSection(item.id)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-              active === item.id ? 'bg-forest-500 text-cream-50 shadow-warm' : 'bg-cream-200 text-muted-foreground hover:text-foreground'
-            }`}
+            className={`tab-pill ${active === item.id ? 'tab-pill-active' : ''}`}
           >
             {item.label}
           </button>

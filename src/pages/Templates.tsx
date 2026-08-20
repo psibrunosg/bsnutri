@@ -122,9 +122,7 @@ export default function Templates({ organizationId, dataSource, patients, canRev
               type="button"
               aria-pressed={status === filter.value}
               onClick={() => setStatus(filter.value)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                status === filter.value ? 'bg-forest-500 text-cream-50 shadow-warm' : 'bg-cream-200 text-muted-foreground hover:text-foreground'
-              }`}
+              className={`tab-pill ${status === filter.value ? 'tab-pill-active' : ''}`}
             >
               {filter.label}
             </button>
@@ -193,7 +191,7 @@ export default function Templates({ organizationId, dataSource, patients, canRev
           </div>
 
           {!isTemplateUsable(detail) ? (
-            <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800" role="status">
+            <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700" role="status">
               Este modelo ainda não foi revisado e aprovado. A aplicação está bloqueada na interface e também no banco de dados.
             </p>
           ) : (

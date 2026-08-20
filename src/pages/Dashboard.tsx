@@ -3,6 +3,7 @@ import { CalendarDays, ChevronRight, ClipboardList, FileText, Info, Leaf, MoreVe
 import { bodyMassIndex, bodyMassIndexCategory } from '../lib/clinicalMetrics'
 import type { PatientSummary } from '../lib/patients'
 import { supabase } from '../lib/supabase'
+import { EARTH, PALETTE } from '../lib/chartPalette'
 import { PageHeader } from '../components/Shell'
 
 const LABEL = 'font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground'
@@ -12,17 +13,17 @@ const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 const ADHERENCE_WINDOW_DAYS = 28
 
 const MACRO_SLICES = [
-  { key: 'carbohydrate', label: 'Carboidratos', color: '#4f7c43' },
-  { key: 'protein', label: 'Proteínas', color: '#d9a44a' },
-  { key: 'fat', label: 'Gorduras', color: '#e08a5e' },
+  { key: 'carbohydrate', label: 'Carboidratos', color: EARTH.leaf },
+  { key: 'protein', label: 'Proteínas', color: PALETTE.amber400 },
+  { key: 'fat', label: 'Gorduras', color: EARTH.clay },
 ] as const
 
 const BMI_TONE_COLORS = {
-  low: '#c98f2f',
-  healthy: '#4a6741',
-  warning: '#c98f2f',
-  high: '#b35c33',
-  critical: '#a03a2a',
+  low: PALETTE.amber500,
+  healthy: PALETTE.forest500,
+  warning: PALETTE.amber500,
+  high: EARTH.terracotta,
+  critical: EARTH.brick,
 } as const
 
 interface PlanOverviewRow {
@@ -171,21 +172,21 @@ function WeightChart({ points }: { points: { label: string; value: number }[] })
     <svg viewBox="0 0 320 116" className="h-[104px] w-full" role="img" aria-label={`Peso médio de ${points[0].label} a ${points[lastIndex].label}`}>
       <defs>
         <linearGradient id="dashboard-weight-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#4a6741" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#4a6741" stopOpacity="0" />
+          <stop offset="0%" stopColor={PALETTE.forest500} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={PALETTE.forest500} stopOpacity="0" />
         </linearGradient>
       </defs>
       {ticks.map((tick) => (
-        <text key={tick} x={left - 8} y={y(tick) + 3} textAnchor="end" fontSize="9" fill="#8a8577">{Number(tick.toFixed(1))}</text>
+        <text key={tick} x={left - 8} y={y(tick) + 3} textAnchor="end" fontSize="9" fill={EARTH.axis}>{Number(tick.toFixed(1))}</text>
       ))}
       <path d={area} fill="url(#dashboard-weight-fill)" />
-      <path d={line} fill="none" stroke="#4a6741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={line} fill="none" stroke={PALETTE.forest500} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {points.map((point, index) => (
-        <circle key={point.label} cx={x(index)} cy={y(point.value)} r="3" fill="#fffdf8" stroke="#4a6741" strokeWidth="2" />
+        <circle key={point.label} cx={x(index)} cy={y(point.value)} r="3" fill={PALETTE.cream50} stroke={PALETTE.forest500} strokeWidth="2" />
       ))}
       <g transform={`translate(${badgeX - 24}, ${Math.max(y(points[lastIndex].value) - 26, 0)})`}>
-        <rect width="48" height="19" rx="9" fill="#28371f" />
-        <text x="24" y="13" textAnchor="middle" fontSize="10" fontWeight="600" fill="#faf8f2">
+        <rect width="48" height="19" rx="9" fill={PALETTE.forest800} />
+        <text x="24" y="13" textAnchor="middle" fontSize="10" fontWeight="600" fill={PALETTE.cream100}>
           {points[lastIndex].value.toFixed(1)} kg
         </text>
       </g>
@@ -200,7 +201,7 @@ function WeightChart({ points }: { points: { label: string; value: number }[] })
             y="106"
             textAnchor={index === 0 ? 'start' : index === lastIndex ? 'end' : 'middle'}
             fontSize="9"
-            fill="#8a8577"
+            fill={EARTH.axis}
           >
             {point.label}
           </text>
@@ -217,7 +218,7 @@ function MacroDonut({ slices }: { slices: { key: string; color: string; percent:
 
   return (
     <svg viewBox="0 0 116 116" className="h-[116px] w-[116px]" aria-hidden="true">
-      <circle cx="58" cy="58" r={radius} fill="none" stroke="#e9e1cd" strokeWidth="22" />
+      <circle cx="58" cy="58" r={radius} fill="none" stroke={PALETTE.cream300} strokeWidth="22" />
       {slices.map((slice) => {
         const length = (slice.percent / 100) * circumference
         const dash = `${length} ${circumference - length}`
@@ -254,8 +255,8 @@ function AdherenceBars({ days }: { days: { label: string; percent: number }[] })
         const height = Math.max((day.percent / 100) * (baseline - top), 3)
         return (
           <g key={day.label}>
-            <rect x={center - barWidth / 2} y={baseline - height} width={barWidth} height={height} rx={barWidth / 2} fill="#a8c489" />
-            <text x={center} y="88" textAnchor="middle" fontSize="9" fill="#8a8577">{day.label}</text>
+            <rect x={center - barWidth / 2} y={baseline - height} width={barWidth} height={height} rx={barWidth / 2} fill={EARTH.sprout} />
+            <text x={center} y="88" textAnchor="middle" fontSize="9" fill={EARTH.axis}>{day.label}</text>
           </g>
         )
       })}
@@ -339,14 +340,14 @@ export default function Dashboard({ organizationId, memberName, patients, onOpen
       const bucket = byWeekday.get(weekday)
       return { label: WEEKDAYS[weekday], percent: bucket && bucket.total ? Math.round((bucket.done / bucket.total) * 100) : 0 }
     })
-    if (!checkins.length) return { days, overall: null, grade: 'Sem check-ins no período', color: '#7a7568' }
+    if (!checkins.length) return { days, overall: null, grade: 'Sem check-ins no período', color: EARTH.axisStrong }
     const done = checkins.filter((checkin) => checkin.state === 'completed' || checkin.state === 'adapted').length
     const overall = Math.round((done / checkins.length) * 100)
     return {
       days,
       overall,
       grade: overall >= 80 ? 'Boa adesão' : overall >= 50 ? 'Adesão parcial' : 'Baixa adesão',
-      color: overall >= 80 ? '#4a6741' : overall >= 50 ? '#c98f2f' : '#a97324',
+      color: overall >= 80 ? PALETTE.forest500 : overall >= 50 ? PALETTE.amber500 : PALETTE.amber600,
     }
   }, [checkins])
 

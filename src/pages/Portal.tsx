@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Droplets, LogOut } from 'lucide-react'
+import { PageHeader } from '../components/Shell'
 import { supabase } from '../lib/supabase'
 import { today, usePatientPortal, type PortalMeal } from '../lib/usePatientPortal'
 import type { PatientAccess } from '../types'
@@ -128,17 +129,14 @@ export default function Portal({ patient, tab, onSelectTab, onLogout }: PortalPr
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/60 px-5 py-4 backdrop-blur lg:px-8">
-        <div className="mx-auto flex max-w-[1000px] items-center justify-between gap-4">
-          <div>
-            <p className="eyebrow">Portal do paciente</p>
-            <p className="font-display text-xl font-semibold">{displayName}</p>
-          </div>
-          <button type="button" className="btn-ghost" onClick={onLogout}><LogOut size={16} /> Sair</button>
-        </div>
-      </header>
+      <main className="mx-auto max-w-[1000px] px-5 py-8 lg:px-10 lg:py-9">
+        <PageHeader
+          eyebrow="Portal do paciente"
+          title={displayName}
+          heroImage="./dashboard/hero-bowl.webp"
+          actions={<button type="button" className="btn-ghost" onClick={onLogout}><LogOut size={16} /> Sair</button>}
+        />
 
-      <main className="mx-auto max-w-[1000px] px-5 py-8 lg:px-8">
         <nav aria-label="Seções do portal" className="mb-6 flex flex-wrap gap-2">
           {TABS.map((item) => (
             <button
@@ -146,9 +144,7 @@ export default function Portal({ patient, tab, onSelectTab, onLogout }: PortalPr
               type="button"
               aria-current={active === item.id ? 'page' : undefined}
               onClick={() => onSelectTab(item.id)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                active === item.id ? 'bg-forest-500 text-cream-50 shadow-warm' : 'bg-cream-200 text-muted-foreground hover:text-foreground'
-              }`}
+              className={`tab-pill ${active === item.id ? 'tab-pill-active' : ''}`}
             >
               {item.label}
             </button>

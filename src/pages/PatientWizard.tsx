@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, Ruler, Target, User } from 'lucide-react'
+import { BackButton, PageHeader } from '../components/Shell'
 import { bodyMassIndex, bodyMassIndexCategory, waistHipRatio } from '../lib/clinicalMetrics'
 import type { PatientDataSource } from '../lib/patients'
 
@@ -127,17 +128,14 @@ export default function PatientWizard({ organizationId, dataSource, onCancel, on
 
   return (
     <div className="mx-auto max-w-3xl">
-      <button type="button" className="mb-6 flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground" onClick={onCancel}>
-        <ArrowLeft size={15} /> Voltar para pacientes
-      </button>
+      <PageHeader
+        backButton={<BackButton onClick={onCancel} label="Voltar para pacientes" />}
+        eyebrow="Cadastro clínico"
+        title="Novo paciente"
+        description="Paciente, avaliação e antropometria são gravados em uma única transação. Medidas não informadas permanecem ausentes."
+      />
 
-      <p className="eyebrow mb-2">Cadastro clínico</p>
-      <h1 className="font-display text-3xl font-semibold">Novo paciente</h1>
-      <p className="mt-1.5 max-w-xl text-[15px] text-muted-foreground">
-        Paciente, avaliação e antropometria são gravados em uma única transação. Medidas não informadas permanecem ausentes.
-      </p>
-
-      <ol className="mb-8 mt-8 flex items-center gap-2">
+      <ol className="mb-8 flex items-center gap-2">
         {STEPS.map((item, position) => (
           <li key={item.id} className="flex flex-1 items-center gap-2">
             <button
@@ -145,9 +143,7 @@ export default function PatientWizard({ organizationId, dataSource, onCancel, on
               aria-current={position === step ? 'step' : undefined}
               disabled={position > step}
               onClick={() => position < step && setStep(position)}
-              className={`flex items-center gap-2.5 rounded-full px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                position === step ? 'bg-forest-500 text-cream-50 shadow-warm' : position < step ? 'bg-forest-100 text-forest-600' : 'bg-cream-200 text-muted-foreground'
-              }`}
+              className={`tab-pill flex items-center gap-2.5 ${position === step ? 'tab-pill-active' : position < step ? 'bg-forest-100 text-forest-600' : ''}`}
             >
               {position < step ? <Check size={14} /> : <item.icon size={14} />}
               {item.label}

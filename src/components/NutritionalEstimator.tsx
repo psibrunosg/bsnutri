@@ -93,7 +93,7 @@ export function NutritionalEstimator({ organizationId, patient, userId, latestWe
         <p className="mt-1 text-sm text-muted-foreground">TMB e GET só são calculados com dados clínicos completos. Nenhum valor é presumido.</p>
 
         {age === null && (
-          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="status">
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" role="status">
             Sem data de nascimento cadastrada não é possível estimar o gasto energético. Registre a data na identificação do paciente.
           </p>
         )}

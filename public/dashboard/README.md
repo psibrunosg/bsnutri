@@ -18,3 +18,13 @@ WebP no tamanho exato de exibição.
 
 As miniaturas de plano são escolhidas por posição na lista (`plan-1` … `plan-4`), não
 por identificador de plano — quatro arquivos cobrem o painel inteiro.
+
+## Faixa do cabeçalho por rota
+
+`PageHeader` (`src/components/Shell.tsx`) aceita `heroImage` opcional. Sem essa prop a
+faixa do topo renderiza só o gradiente e a folha — é o estado das telas internas hoje.
+
+Para dar foto própria a uma rota, coloque aqui um arquivo **1400×400** (o tamanho de
+`hero-bowl.webp`) e passe o caminho na chamada do `PageHeader` daquela tela. As
+miniaturas `plan-1..4.webp` são 344×248 e servem só para os cartões de plano recente;
+esticá-las na faixa deixa a imagem borrada.

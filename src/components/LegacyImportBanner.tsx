@@ -80,7 +80,7 @@ export function LegacyImportBanner({ preview, organizationId, dataSource, onImpo
             )}
             {confirmingClear && (
               <>
-                <p className="w-full text-sm text-amber-800">Apagar remove os dados antigos deste navegador de forma definitiva.</p>
+                <p className="w-full text-sm text-amber-700">Apagar remove os dados antigos deste navegador de forma definitiva.</p>
                 <button type="button" className="btn-ghost" onClick={() => setConfirmingClear(false)}>Cancelar</button>
                 <button type="button" className="btn-primary" onClick={clearStorage}>Confirmar exclusão</button>
               </>

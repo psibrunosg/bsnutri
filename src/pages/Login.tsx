@@ -87,8 +87,8 @@ export default function Login({ recovery = false, onRecoveryComplete }: LoginPro
   return (
     <div className="flex min-h-screen bg-background">
       <div className="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-forest-800 p-12 lg:flex">
-        <div className="pointer-events-none absolute -right-40 -top-40 h-[480px] w-[480px] rounded-full opacity-[0.07]" style={{ background: 'radial-gradient(circle, #d9a44a, transparent 65%)' }} />
-        <div className="pointer-events-none absolute -bottom-52 -left-32 h-[520px] w-[520px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #749966, transparent 65%)' }} />
+        <div className="pointer-events-none absolute -right-40 -top-40 h-[480px] w-[480px] rounded-full bg-[radial-gradient(circle,theme(colors.amber.400),transparent_65%)] opacity-[0.07]" />
+        <div className="pointer-events-none absolute -bottom-52 -left-32 h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle,theme(colors.forest.400),transparent_65%)] opacity-10" />
         <div className="flex items-center gap-3">
           <img src="./app-icon.png" alt="BSNutri" className="h-12 w-12 rounded-full ring-2 ring-amber-400/60" />
           <span className="font-display text-xl font-semibold text-cream-50">BSNutri</span>
@@ -110,12 +110,13 @@ export default function Login({ recovery = false, onRecoveryComplete }: LoginPro
         <div
           data-testid="login-panel"
           data-motion={prefersReducedMotion ? 'reduced' : 'full'}
-          className={`w-full max-w-sm ${prefersReducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-4 duration-500'}`}
+          className={`card-warm w-full max-w-sm p-8 ${prefersReducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-4 duration-500'}`}
         >
           <img src="./app-icon.png" alt="BSNutri" className="mb-6 h-16 w-16 rounded-full lg:hidden" />
           <p className="eyebrow mb-2">Acesso seguro</p>
           <h2 className="font-display text-3xl font-semibold">{title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <span aria-hidden="true" className="mt-3.5 block h-1 w-11 rounded-full bg-amber-400" />
+          <p className="mt-4 text-sm text-muted-foreground">
             {mode === 'login' && 'Entre para continuar o atendimento nutricional.'}
             {mode === 'signup' && 'Depois do cadastro, confirme seu e-mail para liberar o acesso.'}
             {mode === 'forgot' && 'Informe seu e-mail para receber um link seguro.'}
@@ -123,7 +124,7 @@ export default function Login({ recovery = false, onRecoveryComplete }: LoginPro
           </p>
 
           {!isSupabaseConfigured && (
-            <p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+            <p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700" role="alert">
               A autenticação ainda não foi configurada neste ambiente.
             </p>
           )}
